@@ -24,7 +24,7 @@ Pipeline supports different modalities: image, audio and video. In our experimen
 
 We support two major functionalities for image, audio and video modalities: inference of membership detection model and training pipeline for new datasets.
 
-
+Pretrained models available on 🤗 HuggingFace [FiMMIA collection](https://huggingface.co/collections/ai-forever/fimmia).
 ## Distribution shift detection
 
 Additionally, in [shift-detection](./shift-detection/) we release baseline attacks for multimodal data, tailored for distribution shift detection on target MIA datasets. Evaluation results as well as scripts for known datasets are provided in the respective folder. 
