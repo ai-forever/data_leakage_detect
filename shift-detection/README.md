@@ -1,14 +1,8 @@
-# Blind Baselines Beat Membership Inference Attacks for Foundation Models
+# Blind multimodal membership inference attacks for baseline MIA evaluation
 
-This repository contains the code for the paper [Blind Baselines Beat Membership Inference Attacks for Foundation Models](https://arxiv.org/abs/2406.16201). This paper was accepted to be presented at [DATA-FM @ ICLR 2025](https://datafm.github.io/) and [IEEE DLSP Workshop 2025](https://dlsp2025.ieee-security.org/).
+### Description
 
-
-### Abstract
-
-Membership inference (MI) attacks try to determine if a data sample was used to train a machine learning model. For foundation models trained on unknown Web data, MI attacks are often used to detect copyrighted training materials, measure test set contamination, or audit machine unlearning. 
-Unfortunately, we find that evaluations of MI attacks for foundation models are flawed, because they sample members and non-members from different distributions. 
-For 8 published MI evaluation datasets, we show that blind attacks—that distinguish the member and non-member distributions without looking at any trained model—outperform state-of-the-art MI attacks. 
-Existing evaluations thus tell us nothing about membership leakage of a foundation model’s training data.
+An extension of work by [Das et al., 2024](https://arxiv.org/abs/2406.16201) to multimodal data. We provide blind baselines for text, image and audio datasets and encourage researchers to use them in their MIA evaluations and benchmark creation.
 
 ## How to run our attacks?
 At the root of the repository, run the following to install required dependencies:
@@ -17,7 +11,9 @@ At the root of the repository, run the following to install required dependencie
 
 ### Setting up Datasets
 
-All datasets except for the Arxiv (1 month vs 1 month) dataset require no further setup, you can continue to the next step for all other datasets. (For arxiv1m_1m dataset, check [this section](#setting-up-the-arxiv-1-month-vs-1-month-dataset))
+All datasets except for the Arxiv (1 month vs 1 month) and LAION-MI datasets are accessible from the [original repository](https://github.com/ethz-spylab/Blind-MIA). 
+For arxiv1m_1m dataset, check [this section](#setting-up-the-arxiv-1-month-vs-1-month-dataset)
+For LAION-MI dataset, check [this section](#setting-up-laion-mi-images)
 
 ### Run Attacks
 
@@ -91,8 +87,8 @@ Note: Your custom dataset must be in CSV format with at least two columns: one f
 | *Flickr*             | AUCROC                    |        71.3 | 99.0 | ``bag_of_visual_words``               |
 | **VL-MIA Images**    | TPR@5%FPR                 |       22.0  | 99.6 | ``bag_of_visual_words``               |
 | *Dalle*              | AUCROC                    |        70.7 | 99.9 | ``bag_of_visual_words``               |
-| **LAION-MI Images**  | TPR@1%FPR                 |       2.42  |  | ``bag_of_visual_words``               |
-|                      | AUCROC                    |         |    | ``bag_of_visual_words``               |
+| **LAION-MI Images**  | TPR@1%FPR                 |       2.42  | 1.11 | ``bag_of_visual_words``               |
+|                      | AUCROC                    |             | 52.2 | ``bag_of_visual_words``               |
 |                      | <span style="color:cyan"> *Biased Replication* </span>        |             |      |                   |
 | **LAION-MI Captions**| TPR@1%FPR                 |         2.5 |  8.9 | ``greedy_selection``            |
 | **Gutenberg**        | TPR@1%FPR                 |        18.8 | 55.1 | ``greedy_selection``            |
@@ -110,11 +106,21 @@ We handle this dataset separately because it is too big to push to the repositor
 
 ``` python3 run_attack.py --dataset arxiv1m_1m --attack greedy_selection ```
 
+### Setting up LAION-MI images
+
+This dataset is also handled separately. However, we found that a huge amount of images from [laion_mi](https://huggingface.co/datasets/antoniaaa/laion_mi) are already unavailable from predefined urls. 
+Thus results may vary depending on the amount of images accessible through the provided links. Steps to obtain images for evaluation:
+
+1. Run the script to save images and the dataset for evaluation. 
+
+``` python3 data_script_laion_mi.py```
+
+2. Run the attack on the dataset using the command below:
+
+``` python run_attack.py --dataset laion_mi_image  --fpr_budget 1 --attack 'bag_of_visual_words --hypersearch```
 
 
-### Citation
-
-If you use our attacks in your work, please consider citing our paper:
+### Acknowledgements
 
 ```bibtex
 @misc{das2024blindbaselinesbeatmembership,

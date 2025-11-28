@@ -22,6 +22,7 @@ from captum.attr import (
 class Args:
     model_dir: str
     mds_dataset_path: str
+    dataset_name: str = None
     model_cls: str = "BaseLineModelV2"
     embedding_size: int = 1024
     modality_embedding_size: int = 1024
@@ -120,6 +121,7 @@ def main():
     args, = parser.parse_args_into_dataclasses()
     
     model_dir=pathlib.Path(args.model_dir)
+    model_dir=model_dir.joinpath(args.dataset_name) if args.dataset_name is not None else None
 
     model_args = ModelArguments(
         model_name=args.model_cls, 

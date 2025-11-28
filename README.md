@@ -1,11 +1,19 @@
-# Multimodal Semantic Membership Inference Attack (MSMIA)
-This repository contains implementation for work Multimodal Semantic Membership Inference Attacks (MSMIAs)
+# FiMMIA: scaling semantic perturbation-based membership inferenceacross modalities
+This repository contains an implementation of **F**i**MMIA** - a modular **F**ramework for **M**ultimodal **M**embership **I**nference **A**ttacks (FiMMIA)
+
 ## Description
-The system is the first collection of models and pipelines for membership inference attacks against large language models, 
-built initially with a priority for the Russian language, and extendable to any other language or dataset. 
-Pipeline supports different modalities: image, audio and video. . In our experiments, we focus on [MERA datasets](https://github.com/MERA-Evaluation/MERA), 
-however, the presented pipeline can be generalized to other languages. The system is a set of models and Python scripts in a GitHub repository. 
+The system is the first collection of models and pipelines for membership inference attacks against multimodal large language models, built initially with a priority for the Russian language, and extendable to any other language or dataset. 
+Pipeline supports different modalities: image, audio and video. In our experiments, we focus on [MERA datasets](https://github.com/MERA-Evaluation/MERA), however, the presented pipeline can be generalized to other languages. The system is a set of models and Python scripts in a GitHub repository. 
+
 We support two major functionalities for image, audio and video modalities: inference of membership detection model and training pipeline for new datasets.
+
+## Distribution shift detection
+
+Additionally, in [shift-detection](./shift-detection/) we release baseline attacks for multimodal data, tailored for distribution shift detection on target MIA datasets. Evaluation results as well as scripts for known datasets are provided in the respective folder. 
+
+We encourage the community to run these baselines on their MIA benchmarks prior to their release or new methods evaluations to ensure fair and credible results.
+
+We are grateful to [Das et al., 2024](https://arxiv.org/abs/2406.16201) for the initial text pipelines that has served as a base of this tool.
 
 ## Usage
 ### Data
@@ -40,7 +48,7 @@ D. 8
 * `ds_name` is the dataset name. For example `ruEnvAQA`.
 
 ### Train
-All pipeline contains following steps:
+Whole pipeline contains the following steps:
 1. SFT-Lora MLLM finetuning (if need)
 2. Neighbor generation 
 3. Embedding generation 
@@ -132,7 +140,7 @@ python job_launcher.py --script="smia.video.loss_calc_qwen25" \
   --df_path="path/to/train.csv"
 ```
 #### Attack model training
-Before training we need prepare data and merge all parts files embeddings and losses:
+Before training we need prepare data and merge all parts of files containing embeddings and losses:
 ```bash
 python job_launcher.py --script="smia.utils.mds_dataset" \
   --save_dir="path/to/save/mds/dataset" \
@@ -149,7 +157,7 @@ Here
 * `labels` - list of labels in dataset
 * `modality_key` - modality column
 
-After data preparation run trainin attack model neural network MSMIA:
+After data preparation run training of an attack model neural network FiMMIA:
 ```bash
 python job_launcher.py --script="smia.train" \
   --train_dataset_path="train/mds/path" \
@@ -167,9 +175,9 @@ python job_launcher.py --script="smia.train" \
 Here
 * `train_dataset_path` - path to train mds dataset
 * `val_dataset_path` - path to test mds dataset
-* `model_name` - name MSMIA neural network architecture
+* `model_name` - name FiMMIA neural network architecture
 * `num_train_epochs` - number of training epochs
-* `output_dir` - path to save MSMIA model
+* `output_dir` - path to save FiMMIA model
 * `optim` - pytorch optimizer name
 * `learning_rate` - learning rate
 * `max_grad_norm` - max gradient normalization
@@ -183,7 +191,7 @@ For inference we repeat 2, 3, 4 steps from training stage:
 3. Embedding generation
 4. Loss computation
 
-For inference MSMIA model on new data we should run command:
+For inference FiMMIA model on new data we should run command:
 ```bash
 python job_launcher.py --script="smia.smia_inference" \
   --model_name="SMIABaseLineModelLossNormSTDV2" \
@@ -193,13 +201,40 @@ python job_launcher.py --script="smia.smia_inference" \
   --save_metrics_path="path/to/save/metrics" 
 ```
 Here
-* `model_name` - name MSMIA neural network architecture
-* `model_path` - path to load MSMIA model
+* `model_name` - name FiMMIA neural network architecture
+* `model_path` - path to load FiMMIA model
 * `test_path` - path to test dataset
 * `save_path` - path to save predictions
 * `save_metrics_path` - path to save metrics
+
+### Gradient attribution
+
+We also support running an gradient-based feature attribution on the FiMMIA model, intended to calculate a relative impact of loss and embedding related parts. 
+The pipeline saves results and provides an option to draw graphs of attrbution metrics. The results are saved into the same folder as an FiMMIA model.
+
+To run attribution:
+```bash
+python job_launcher.py --script="smia.attribute_smia" \
+  --model_dir="path/to/smia_model_folder" \
+  --mds_dataset_path="path/to/mds_dataset_folder" \
+  --model_cls="BaseLineModelV2" \
+  --embedding_size=1024 \
+  --modality_embedding_size=1024 \
+  --add_attribution_noise=False \
+  --create_graphs=True
+```
+Here
+* `model_cls` - name of a FiMMIA neural network architecture
+* `model_dir` - path to load FiMMIA model
+* `mds_dataset_path` - path to the dataset to attribute
+* `embedding_size` - dimension of the embedding input
+* `modality_embedding_size` - dimension of the modality embedding input (only used in case modal embeddings are used)
+* `add_attribution_noise` - whether to use stochastic perturbations (e.g. NoiseTunnel) to enhance reliability of the method
+* `create_graphs` - whether to create graphs of attribution results
+
 
 ### Authors
 * Emelyanov Anton
 * Kudriashov Sergei
 * Alena Fenogenova
+
