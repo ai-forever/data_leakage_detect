@@ -2,7 +2,7 @@
 
 <p align="center">
   <picture>
-    <img alt="MERA" src="docs/FiMMIA_system_overview.png" style="max-width: 100%;">
+    <img alt="FiMMIA" src="docs/FiMMIA_system_overview.png" style="max-width: 100%;">
   </picture>
 </p>
 
@@ -38,7 +38,7 @@ The inference pipeline is shown at image below.
 
 <p align="center">
   <picture>
-    <img alt="MERA" src="docs/fimmia.png" style="max-width: 100%;">
+    <img alt="FiMMIA Inference" src="docs/FiMMIA_Inference.png" style="max-width: 100%;">
   </picture>
 </p>
 
