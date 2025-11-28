@@ -1,4 +1,4 @@
-# FiMMIA: scaling semantic perturbation-based membership inferenceacross modalities
+# FiMMIA: scaling semantic perturbation-based membership inference across modalities
 This repository contains an implementation of **F**i**MMIA** - a modular **F**ramework for **M**ultimodal **M**embership **I**nference **A**ttacks (FiMMIA)
 
 ## Description
