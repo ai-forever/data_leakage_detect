@@ -10,8 +10,8 @@ import pickle
 import pathlib
 import seaborn as sns
 from matplotlib import pyplot as plt
-from smia.train import ModelArguments
-from smia.utils.mds_dataset import get_streaming_ds
+from fimmia.train import ModelArguments
+from fimmia.utils.mds_dataset import get_streaming_ds
 
 from captum.attr import (
     IntegratedGradients,

@@ -1,11 +1,11 @@
-from smia.smia_models.registry import register_model
+from fimmia.fimmia_models.registry import register_model
 from torch import nn
 from dataclasses import dataclass
 import torch
 
 
 @dataclass
-class SMIAModelArguments:
+class FiMMIAModelArguments:
     model_name: str
     embedding_size: int = 4096
     projection_size: int = 512
@@ -16,7 +16,7 @@ class SMIAModelArguments:
 @register_model
 class BaseLineModelV2(nn.Module):
 
-    def __init__(self, model_args: SMIAModelArguments):
+    def __init__(self, model_args: FiMMIAModelArguments):
         super(BaseLineModelV2, self).__init__()
         embedding_size = model_args.embedding_size
         projection_size = model_args.projection_size
@@ -73,10 +73,10 @@ class BaseLineModelV2(nn.Module):
 
 
 @register_model
-class SMIAImageAllModelV2(nn.Module):
+class FiMMIAImageAllModelV2(nn.Module):
 
-    def __init__(self, model_args: SMIAModelArguments):
-        super(SMIAImageAllModelV2, self).__init__()
+    def __init__(self, model_args: FiMMIAModelArguments):
+        super(FiMMIAImageAllModelV2, self).__init__()
         embedding_size = model_args.embedding_size
         projection_size = model_args.projection_size
         image_embedding_size = model_args.image_embedding_size
@@ -145,7 +145,7 @@ class SMIAImageAllModelV2(nn.Module):
 
 
 @register_model
-class SMIAImageAllModelLossNormLinearV2(SMIAImageAllModelV2):
+class FiMMIAImageAllModelLossNormLinearV2(FiMMIAImageAllModelV2):
 
     def forward(self, loss_input, embedding_input, image_embedding_input, min_loss=0, loss_diff=1, labels=None):
         loss_input = (loss_input - min_loss) / loss_diff
@@ -153,7 +153,7 @@ class SMIAImageAllModelLossNormLinearV2(SMIAImageAllModelV2):
 
 
 @register_model
-class SMIAImageAllModelLossNormSTDV2(SMIAImageAllModelV2):
+class FiMMIAImageAllModelLossNormSTDV2(FiMMIAImageAllModelV2):
 
     def forward(self, loss_input, embedding_input, image_embedding_input, mean=0, std=1, labels=None):
         loss_input = (loss_input - mean) / std
@@ -161,7 +161,7 @@ class SMIAImageAllModelLossNormSTDV2(SMIAImageAllModelV2):
 
 
 @register_model
-class SMIABaseLineModelLossNormLinearV2(BaseLineModelV2):
+class FiMMIABaseLineModelLossNormLinearV2(BaseLineModelV2):
 
     def forward(self, loss_input, embedding_input, min_loss=0, loss_diff=1, labels=None):
         loss_input = (loss_input - min_loss) / loss_diff
@@ -169,7 +169,7 @@ class SMIABaseLineModelLossNormLinearV2(BaseLineModelV2):
 
 
 @register_model
-class SMIABaseLineModelLossNormSTDV2(BaseLineModelV2):
+class FiMMIABaseLineModelLossNormSTDV2(BaseLineModelV2):
 
     def forward(self, loss_input, embedding_input, mean=0, std=1, labels=None):
         loss_input = (loss_input - mean) / std
@@ -200,9 +200,9 @@ class Periodic(nn.Module):
 
 
 @register_model
-class SMIABaseLineModelLossNormPeriodicV2(BaseLineModelV2):
-    def __init__(self, model_args: SMIAModelArguments):
-        super(SMIABaseLineModelLossNormPeriodicV2, self).__init__(model_args)
+class FiMMIABaseLineModelLossNormPeriodicV2(BaseLineModelV2):
+    def __init__(self, model_args: FiMMIAModelArguments):
+        super(FiMMIABaseLineModelLossNormPeriodicV2, self).__init__(model_args)
         self.loss_component = nn.Sequential(
             Periodic(
                 self.projection_size // 2,
@@ -214,9 +214,9 @@ class SMIABaseLineModelLossNormPeriodicV2(BaseLineModelV2):
 
 
 @register_model
-class SMIAImageAllModelLossNormPeriodicV2(SMIAImageAllModelV2):
-    def __init__(self, model_args: SMIAModelArguments):
-        super(SMIAImageAllModelLossNormPeriodicV2, self).__init__(model_args)
+class FiMMIAImageAllModelLossNormPeriodicV2(FiMMIAImageAllModelV2):
+    def __init__(self, model_args: FiMMIAModelArguments):
+        super(FiMMIAImageAllModelLossNormPeriodicV2, self).__init__(model_args)
         self.loss_component = nn.Sequential(
             Periodic(
                 self.projection_size // 2,

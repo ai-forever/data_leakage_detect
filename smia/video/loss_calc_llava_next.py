@@ -1,7 +1,7 @@
 from tqdm import tqdm
 from copy import deepcopy
 from dataclasses import dataclass
-from smia.video.train_llava_next import *
+from fimmia.video.train_llava_next import *
 import os
 import pandas as pd
 

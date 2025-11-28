@@ -5,7 +5,7 @@ from peft import LoraConfig, get_peft_model
 from transformers import AutoTokenizer, HfArgumentParser, PreTrainedModel, AutoModelForCausalLM
 from typing import Dict, Any, List, Optional
 import pandas as pd
-from smia.sft_finetune_image import Args
+from fimmia.sft_finetune_image import Args
 
 
 def collate_fn(batch):

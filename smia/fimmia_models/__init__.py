@@ -1,4 +1,4 @@
-from smia.smia_models.registry import register_all, rel_dir, get_all_models
+from fimmia.fimmia_models.registry import register_all, rel_dir, get_all_models
 from safetensors.torch import load_file
 import os
 

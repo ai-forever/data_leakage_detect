@@ -4,7 +4,7 @@ from trl import SFTConfig, SFTTrainer
 from transformers import AutoModelForVision2Seq, AutoProcessor, HfArgumentParser
 from peft import LoraConfig, get_peft_model
 import pandas as pd
-from smia.sft_finetune_image import Args
+from fimmia.sft_finetune_image import Args
 import numpy as np
 import av
 

@@ -1,6 +1,6 @@
 from collections import defaultdict
-from smia.utils.mds_dataset import get_streaming_ds
-from smia.smia import SMIA
+from fimmia.utils.mds_dataset import get_streaming_ds
+from fimmia.fimmia import FiMMIA
 from sklearn.metrics import accuracy_score
 from transformers import HfArgumentParser, Trainer
 from dataclasses import dataclass
@@ -50,7 +50,7 @@ def get_sample_scores_by_groups(df_test: pd.DataFrame):
 
 
 def get_metrics_from_scores(new_scores, new_labels, y_true_n, y_pred_n):
-    smia = SMIA()
+    fimmia = FiMMIA()
     ds_metrics = []
     # new_scores, new_labels, y_true_n, y_pred_n = get_sample_scores(df_test)
     for ds_name in new_scores:
@@ -67,7 +67,7 @@ def get_metrics_from_scores(new_scores, new_labels, y_true_n, y_pred_n):
                 labels.extend(new_labels[ds_name][model_name])
                 y_trues.extend(y_true_n[ds_name][model_name])
                 y_preds.extend(y_pred_n[ds_name][model_name])
-        m = {n: x[0] for n, x in dict(smia.get_metrics({"smia": scores}, labels)).items()}
+        m = {n: x[0] for n, x in dict(fimmia.get_metrics({"fimmia": scores}, labels)).items()}
         acc = accuracy_score(y_trues, y_preds)
         m["per_neighbors_acc"] = acc
         m["acc"] = accuracy_score(labels, np.array(scores) > 0.5)
@@ -83,8 +83,8 @@ def convert_str(s):
 
 def get_metrics_from_df(df):
     cscores, labels, y_true, y_pred = get_sample_scores(df)
-    smia = SMIA()
-    m = {n: x[0] for n, x in dict(smia.get_metrics({"smia": cscores}, labels)).items()}
+    fimmia = FiMMIA()
+    m = {n: x[0] for n, x in dict(fimmia.get_metrics({"fimmia": cscores}, labels)).items()}
     m["acc"] = accuracy_score(labels, np.array(cscores) > 0.5)
     m["per_neighbors_acc"] = accuracy_score(y_true, y_pred)
     m = pd.DataFrame([m])

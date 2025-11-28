@@ -4,7 +4,7 @@ from glob import glob
 from tqdm import tqdm
 from dataclasses import dataclass
 from transformers import HfArgumentParser
-from smia.utils.utils import load_json
+from fimmia.utils.utils import load_json
 import os
 import pandas as pd
 import numpy as np

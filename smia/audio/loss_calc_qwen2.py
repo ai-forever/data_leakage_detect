@@ -1,7 +1,7 @@
 from tqdm import tqdm
 from copy import deepcopy
 from dataclasses import dataclass
-from smia.video.train_qwen25vl import *
+from fimmia.video.train_qwen25vl import *
 from transformers import Qwen2AudioForConditionalGeneration
 import os
 import pandas as pd

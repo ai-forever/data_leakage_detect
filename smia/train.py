@@ -1,11 +1,11 @@
 import os.path
 from dataclasses import dataclass, asdict
 from transformers import TrainingArguments, Trainer, HfArgumentParser
-from smia.smia_models import init_model
-from smia.utils.mds_dataset import get_streaming_ds
-from smia.utils.data import create_data_collator
+from fimmia.fimmia_models import init_model
+from fimmia.utils.mds_dataset import get_streaming_ds
+from fimmia.utils.data import create_data_collator
 from transformers import default_data_collator
-from smia.utils.metrics import get_metrics_from_df, get_df_with_predictions
+from fimmia.utils.metrics import get_metrics_from_df, get_df_with_predictions
 
 
 @dataclass

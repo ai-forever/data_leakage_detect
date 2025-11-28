@@ -1,4 +1,4 @@
-from smia.train import (
+from fimmia.train import (
     ModelArguments,
     init_model,
     TrainingArguments,
@@ -7,8 +7,8 @@ from smia.train import (
 )
 from transformers import HfArgumentParser
 from dataclasses import asdict, dataclass
-from smia.utils.data import create_data_collator
-from smia.utils.metrics import get_metrics_from_df, get_df_with_predictions
+from fimmia.utils.data import create_data_collator
+from fimmia.utils.metrics import get_metrics_from_df, get_df_with_predictions
 
 
 @dataclass

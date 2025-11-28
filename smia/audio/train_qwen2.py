@@ -1,4 +1,4 @@
-from smia.video.train_qwen25vl import *
+from fimmia.video.train_qwen25vl import *
 from transformers import Qwen2AudioForConditionalGeneration
 
 

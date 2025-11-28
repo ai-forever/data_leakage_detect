@@ -1,6 +1,6 @@
 from tqdm import tqdm
 from copy import deepcopy
-from smia.sft_finetune_image import *
+from fimmia.sft_finetune_image import *
 import os
 import pandas as pd
 

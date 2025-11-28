@@ -1,6 +1,6 @@
 from collections import defaultdict
 from tqdm import tqdm
-from smia.smia_models import init_model
+from fimmia.fimmia_models import init_model
 from transformers import default_data_collator, Trainer, TrainingArguments
 from sklearn.metrics import roc_curve, auc
 from torch.utils.data import Dataset
@@ -22,7 +22,7 @@ class ModelArguments:
     sigmas_type: str = None
 
 
-class SMIABatchDataset(Dataset):
+class FiMMIABatchDataset(Dataset):
     def __init__(self, examples):
         self.examples = examples
         self._size = len(examples)
@@ -64,12 +64,12 @@ def iter_batches(df_path: str):
         df = pd.read_csv(fn)
         for _, group_label in df.groupby("input"):
             for _, group in group_label.groupby("label"):
-                ds = SMIABatchDataset.from_rows(group)
+                ds = FiMMIABatchDataset.from_rows(group)
                 yield idx, ds, group
                 idx += 1
 
 
-class SMIA:
+class FiMMIA:
     @staticmethod
     def load_data(path: str):
         return iter_batches(path)
@@ -82,7 +82,7 @@ class SMIA:
 
     def get_scores(self, processor, data):
         predictions = []
-        for idx, row, group in tqdm(data, leave=True, desc="predict smia scores..."):
+        for idx, row, group in tqdm(data, leave=True, desc="predict fimmia scores..."):
             scores = self._get_scores(processor, row)
             group["predictions"] = list(scores)
             predictions.append(group)
@@ -128,7 +128,7 @@ class SMIA:
         return scores
 
 
-class SMIAMERA(SMIA):
+class FiMMIAMERA(FiMMIA):
     @staticmethod
     def load_data(parent_df_path: str):
         save_dir = f"{parent_df_path[:-4]}_ng_parts"
@@ -138,6 +138,6 @@ class SMIAMERA(SMIA):
             df = pd.read_csv(df_path)
             for _, group_label in df.groupby("input"):
                 for _, group in group_label.groupby("label"):
-                    ds = SMIABatchDataset.from_rows(group)
+                    ds = FiMMIABatchDataset.from_rows(group)
                     yield idx, ds, group
                     idx += 1

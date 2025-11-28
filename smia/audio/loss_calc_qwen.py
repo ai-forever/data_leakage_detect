@@ -1,7 +1,7 @@
 from tqdm import tqdm
 from copy import deepcopy
 from dataclasses import dataclass
-from smia.audio.train_qwen import *
+from fimmia.audio.train_qwen import *
 import os
 import pandas as pd
 

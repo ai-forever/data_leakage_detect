@@ -7,9 +7,9 @@ from trl import SFTConfig, SFTTrainer
 from transformers import AutoModelForVision2Seq, AutoProcessor, HfArgumentParser
 from peft import LoraConfig, get_peft_model
 os.environ["FORCE_QWENVL_VIDEO_READER"] = "torchvision"
-from smia.video.vision_process import process_vision_info
+from fimmia.video.vision_process import process_vision_info
 import pandas as pd
-from smia.sft_finetune_image import Args
+from fimmia.sft_finetune_image import Args
 
 
 class SFTDataset(Dataset):

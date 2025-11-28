@@ -1,4 +1,21 @@
 # FiMMIA: scaling semantic perturbation-based membership inference across modalities
+
+<p align="center">
+  <picture>
+    <img alt="MERA" src="docs/FiMMIA_system_overview.png" style="max-width: 100%;">
+  </picture>
+</p>
+
+<p align="center">
+    <a href="https://opensource.org/licenses/MIT">
+    <img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg">
+    </a>
+    <a href="https://github.com/ai-forever/data_leakage_detect/releases">
+    <img alt="Release" src="https://img.shields.io/badge/release-v1.0.0-blue">
+    </a>
+
+</p>
+
 This repository contains an implementation of **F**i**MMIA** - a modular **F**ramework for **M**ultimodal **M**embership **I**nference **A**ttacks (FiMMIA)
 
 ## Description
@@ -6,6 +23,7 @@ The system is the first collection of models and pipelines for membership infere
 Pipeline supports different modalities: image, audio and video. In our experiments, we focus on [MERA datasets](https://github.com/MERA-Evaluation/MERA), however, the presented pipeline can be generalized to other languages. The system is a set of models and Python scripts in a GitHub repository. 
 
 We support two major functionalities for image, audio and video modalities: inference of membership detection model and training pipeline for new datasets.
+
 
 ## Distribution shift detection
 
@@ -16,6 +34,14 @@ We encourage the community to run these baselines on their MIA benchmarks prior 
 We are grateful to [Das et al., 2024](https://arxiv.org/abs/2406.16201) for the initial text pipelines that has served as a base of this tool.
 
 ## Usage
+The inference pipeline is shown at image below.
+
+<p align="center">
+  <picture>
+    <img alt="MERA" src="docs/fimmia.png" style="max-width: 100%;">
+  </picture>
+</p>
+
 ### Data
 For start working we should convert our dataset into pandas format with following structure:
 
@@ -58,7 +84,7 @@ Whole pipeline contains the following steps:
 For finetuning run python commands.
 ##### Image
 ```bash
-python job_launcher.py --script="smia.sft_finetune_image" \
+python job_launcher.py --script="fimmia.sft_finetune_image" \
   --train_df_path="path/to/train.csv" \
   --test_df_path="path/to/test.csv" \
   --num_train_epochs=5 \
@@ -73,7 +99,7 @@ Here
 
 ##### Video
 ```bash
-python job_launcher.py --script="smia.video.train_qwen25vl" \
+python job_launcher.py --script="fimmia.video.train_qwen25vl" \
   --train_df_path="path/to/train.csv" \
   --test_df_path="path/to/test.csv" \
   --num_train_epochs=5 \
@@ -82,7 +108,7 @@ python job_launcher.py --script="smia.video.train_qwen25vl" \
 ```
 ##### Audio
 ```bash
-python job_launcher.py --script="smia.audio.train_qwen2" \
+python job_launcher.py --script="fimmia.audio.train_qwen2" \
   --train_df_path="path/to/train.csv" \
   --test_df_path="path/to/test.csv" \
   --num_train_epochs=5 \
@@ -91,7 +117,7 @@ python job_launcher.py --script="smia.audio.train_qwen2" \
 ```
 #### Neighbor generation 
 ```bash
-python job_launcher.py --script="smia.neighbors" \
+python job_launcher.py --script="fimmia.neighbors" \
   --model_path="ai-forever/FRED-T5-1.7B" \
   --dataset_path="path/to/train.csv" \
   --max_text_len=4000
@@ -102,7 +128,7 @@ Here
 * `max_text_len` - max of text length in number of characters
 #### Embedding generation
 ```bash
-python job_launcher.py --script="smia.embeds_text_calc" \
+python job_launcher.py --script="fimmia.embeds_text_calc" \
   --embed_model="intfloat/e5-mistral-7b-instruct" \
   --df_path="path/to/train.csv"
 ```
@@ -112,7 +138,7 @@ Here
 #### Loss computation
 ##### Image
 ```bash
-python job_launcher.py --script="smia.image.loss_calc" \
+python job_launcher.py --script="fimmia.image.loss_calc" \
   --model_id=Qwen/Qwen2.5-VL-3B-Instruct \
   --model_name=Qwen2.5-VL-3B-Instruct \
   --label=0 \
@@ -125,7 +151,7 @@ Here
 * `df_path` - path to dataset for calculating loss
 ##### Audio
 ```bash
-python job_launcher.py --script="smia.audio.loss_calc_qwen2" \
+python job_launcher.py --script="fimmia.audio.loss_calc_qwen2" \
   --model_id=Qwen/Qwen2-Audio-7B-Instruct \
   --model_name=Qwen2-Audio-7B-Instruct \
   --label=0 \
@@ -133,7 +159,7 @@ python job_launcher.py --script="smia.audio.loss_calc_qwen2" \
 ```
 ##### Video
 ```bash
-python job_launcher.py --script="smia.video.loss_calc_qwen25" \
+python job_launcher.py --script="fimmia.video.loss_calc_qwen25" \
   --model_id=Qwen/Qwen2.5-VL-3B-Instruct \
   --model_name=Qwen/Qwen2.5-VL-3B-Instruct \
   --label=0 \
@@ -142,7 +168,7 @@ python job_launcher.py --script="smia.video.loss_calc_qwen25" \
 #### Attack model training
 Before training we need prepare data and merge all parts of files containing embeddings and losses:
 ```bash
-python job_launcher.py --script="smia.utils.mds_dataset" \
+python job_launcher.py --script="fimmia.utils.mds_dataset" \
   --save_dir="path/to/save/mds/dataset" \
   --model_name="Qwen2.5-VL-3B-Instruct" \
   --origin_df_path="path/to/train.csv" \
@@ -159,10 +185,10 @@ Here
 
 After data preparation run training of an attack model neural network FiMMIA:
 ```bash
-python job_launcher.py --script="smia.train" \
+python job_launcher.py --script="fimmia.train" \
   --train_dataset_path="train/mds/path" \
   --val_dataset_path="test/mds/path" \
-  --model_name="SMIABaseLineModelLossNormSTDV2" \
+  --model_name="FiMMIABaseLineModelLossNormSTDV2" \
   --output_dir="path/to/model/save" \
   --num_train_epochs=10 \
   --optim="adafactor" \
@@ -193,8 +219,8 @@ For inference we repeat 2, 3, 4 steps from training stage:
 
 For inference FiMMIA model on new data we should run command:
 ```bash
-python job_launcher.py --script="smia.smia_inference" \
-  --model_name="SMIABaseLineModelLossNormSTDV2" \
+python job_launcher.py --script="fimmia.fimmia_inference" \
+  --model_name="FiMMIABaseLineModelLossNormSTDV2" \
   --model_path="path/to/model/save" \
   --test_path="path/to/test.csv" \
   --save_path="path/to/save/predictions.csv" \
@@ -214,8 +240,8 @@ The pipeline saves results and provides an option to draw graphs of attrbution m
 
 To run attribution:
 ```bash
-python job_launcher.py --script="smia.attribute_smia" \
-  --model_dir="path/to/smia_model_folder" \
+python job_launcher.py --script="fimmia.attribute_fimmia" \
+  --model_dir="path/to/fimmia_model_folder" \
   --mds_dataset_path="path/to/mds_dataset_folder" \
   --model_cls="BaseLineModelV2" \
   --embedding_size=1024 \
