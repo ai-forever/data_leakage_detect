@@ -45,5 +45,8 @@ def main():
     # save_path = os.path.join(args.save_dir, os.path.split(args.test_path)[-1])
     # os.makedirs(args.save_path, exist_ok=True)
     df_pred.to_csv(args.save_path, index=False)
-    m = get_metrics_from_df(df_pred)
-    m.to_csv(args.save_metrics_path, index=False)
+    try:
+        m = get_metrics_from_df(df_pred)
+        m.to_csv(args.save_metrics_path, index=False)
+    except:
+        pass

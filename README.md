@@ -230,7 +230,7 @@ For inference FiMMIA model on new data we should run command:
 python job_launcher.py --script="fimmia.fimmia_inference" \
   --model_name="FiMMIABaseLineModelLossNormSTDV2" \
   --model_path="path/to/model/save" \
-  --test_path="path/to/test.csv" \
+  --test_path="test/mds/path" \
   --save_path="path/to/save/predictions.csv" \
   --save_metrics_path="path/to/save/metrics" 
 ```
