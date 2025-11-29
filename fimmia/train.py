@@ -63,12 +63,15 @@ def train(
         shuffle=True
     )
     val_paths = data_args.val_dataset_path
-    if isinstance(val_paths, str):
-        val_paths = val_paths.split(",")
-    val_ds = get_streaming_ds(
-        paths=val_paths,
-        shuffle=False
-    )
+    if val_paths is not None:
+        if isinstance(val_paths, str):
+            val_paths = val_paths.split(",")
+        val_ds = get_streaming_ds(
+            paths=val_paths,
+            shuffle=False
+        )
+    else:
+        val_ds = None
     trainer = Trainer(
         model=model,
         args=TrainingArguments(**asdict(training_args)),

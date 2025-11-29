@@ -23,7 +23,7 @@ def register_all(services_dir):
             and file.endswith('.py')
         ):
             module_name = file[:-3]
-            module = f"fimmia_v3.fimmia_models.{module_name}"
+            module = f"fimmia.fimmia_models.{module_name}"
             # print(f"import module {module}")
             _ = importlib.import_module(f"{module}")
 
