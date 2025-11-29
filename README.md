@@ -45,10 +45,10 @@ The inference pipeline is shown at image below.
 ### Data
 For start working we should convert our dataset into pandas format with following structure:
 
-| question | answer | audio | ds_name  |
+| input | answer | audio | ds_name  |
 |----------|--------|-------|----------|
 
-* `question` example:
+* `input` example:
 
 ```text
 Помогите мне, пожалуйста.
@@ -130,11 +130,13 @@ Here
 ```bash
 python job_launcher.py --script="fimmia.embeds_text_calc" \
   --embed_model="intfloat/e5-mistral-7b-instruct" \
-  --df_path="path/to/train.csv"
+  --df_path="path/to/train.csv" \
+  --part_size=5000
 ```
 Here
 * `embed_model` - embedder path
 * `df_path` - path to dataset for generating embeddings
+* `part_size` - lines for split dataframe into smaller frames
 #### Loss computation
 ##### Image
 ```bash
@@ -142,20 +144,23 @@ python job_launcher.py --script="fimmia.image.loss_calc" \
   --model_id=Qwen/Qwen2.5-VL-3B-Instruct \
   --model_name=Qwen2.5-VL-3B-Instruct \
   --label=0 \
-  --df_path="path/to/train.csv"
+  --df_path="path/to/train.csv" \
+  --part_size=5000
 ```
 Here
 * `model_id` - path MLLM model
 * `model_name` - name of MLLM model (using for store results)
 * `label` - label of dataset `0` or `1`
 * `df_path` - path to dataset for calculating loss
+* `part_size` - lines for split dataframe into smaller frames
 ##### Audio
 ```bash
 python job_launcher.py --script="fimmia.audio.loss_calc_qwen2" \
   --model_id=Qwen/Qwen2-Audio-7B-Instruct \
   --model_name=Qwen2-Audio-7B-Instruct \
   --label=0 \
-  --df_path="path/to/train.csv"
+  --df_path="path/to/train.csv" \
+  --part_size=5000
 ```
 ##### Video
 ```bash
@@ -163,7 +168,8 @@ python job_launcher.py --script="fimmia.video.loss_calc_qwen25" \
   --model_id=Qwen/Qwen2.5-VL-3B-Instruct \
   --model_name=Qwen/Qwen2.5-VL-3B-Instruct \
   --label=0 \
-  --df_path="path/to/train.csv"
+  --df_path="path/to/train.csv" \
+  --part_size=5000
 ```
 #### Attack model training
 Before training we need prepare data and merge all parts of files containing embeddings and losses:
@@ -174,7 +180,8 @@ python job_launcher.py --script="fimmia.utils.mds_dataset" \
   --origin_df_path="path/to/train.csv" \
   --shuffle=0 \
   --labels="0,1" \
-  --modality_key="video"
+  --modality_key="video" \
+  --single_file=1
 ```
 Here
 * `save_dir` - path for saving merged dataset
@@ -182,6 +189,7 @@ Here
 * `shuffle` - not shuffle data `0` or shuffle `1`
 * `labels` - list of labels in dataset
 * `modality_key` - modality column
+* `single_file` - run on single file or batches
 
 After data preparation run training of an attack model neural network FiMMIA:
 ```bash
