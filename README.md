@@ -42,6 +42,8 @@ The inference pipeline is shown at image below.
   </picture>
 </p>
 
+See examples of Finetuning and Inference Fimmia [here](examples/Finetune_and_Inference_example.ipynb)
+
 ### Data
 For start working we should convert our dataset into pandas format with following structure:
 
