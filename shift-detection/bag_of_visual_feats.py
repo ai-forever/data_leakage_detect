@@ -89,7 +89,7 @@ def extract_all_features(images, sift_clusters=50, dct_coeffs=20, color_bins=32,
     lbp_features = extract_lbp_features(images, n_points=lbp_points)
     color_features = extract_color_histograms(images, bins=color_bins)
 
-    print(sift_features.shape, dct_features.shape, lbp_features.shape, color_features.shape)
+
     
     max_sift_dim = sift_clusters
     if sift_features.shape[1] < max_sift_dim:

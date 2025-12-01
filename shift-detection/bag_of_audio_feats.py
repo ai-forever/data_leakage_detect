@@ -48,7 +48,7 @@ def extract_audio_features(audio_path, sr=22050, n_mfcc=20, ):
         tonnetz,
         tempogram
     ])
-    print(features.shape)
+
     return features
 
 
