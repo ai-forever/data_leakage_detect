@@ -13,7 +13,9 @@ import os
 
 def merge_part(embeds_dir, image_embeds_dir, loss_dir, num_part, model_name, label=0):
     df_embeds = pd.read_csv(os.path.join(embeds_dir, f"part_{num_part}.csv"))
-    df_image_embeds = pd.read_csv(os.path.join(image_embeds_dir, f"part_{num_part}.csv"))
+    df_image_embeds = pd.read_csv(
+        os.path.join(image_embeds_dir, f"part_{num_part}.csv")
+    )
     df_loss = pd.read_csv(os.path.join(loss_dir, f"part_{num_part}.csv"))
     assert len(df_loss) == len(df_image_embeds) == len(df_embeds)
     df_loss["label"] = label
@@ -23,7 +25,9 @@ def merge_part(embeds_dir, image_embeds_dir, loss_dir, num_part, model_name, lab
     df_loss["input_image_embeds"] = df_image_embeds.input_image_embeds
     df_loss["model_name"] = model_name
     df_loss["hash"] = [
-        str(hash(f"{x.input}{x.answer}{x.image}{x.ds_name}{x.label}{model_name}")) for _, x in df_loss.iterrows()]
+        str(hash(f"{x.input}{x.answer}{x.image}{x.ds_name}{x.label}{model_name}"))
+        for _, x in df_loss.iterrows()
+    ]
     df_loss["num_part"] = num_part
     return df_loss
 
@@ -34,7 +38,9 @@ def iterate_df_parts(path, model_name, label):
     loss_dir = os.path.join(path[:-4], f"loss/{model_name}")
     num_parts = len(glob(f"{embeds_dir}/*.csv"))
     for num_part in tqdm(range(num_parts), total=num_parts, desc=f"prc df {path}"):
-        part = merge_part(embeds_dir, image_embeds_dir, loss_dir, num_part, model_name, label=label)
+        part = merge_part(
+            embeds_dir, image_embeds_dir, loss_dir, num_part, model_name, label=label
+        )
         yield part
 
 
@@ -62,7 +68,7 @@ def fix_row(input_row, row):
 
 
 def row_to_sample(row, sigmas):
-    key = f'{row.ds_name}_{row.model_name}'
+    key = f"{row.ds_name}_{row.model_name}"
     line = {
         "label": row.label,
         "loss_input": row.input_loss - row.neighbor_loss,
@@ -93,7 +99,9 @@ def write_part(df, ds_writer, sigmas):
             ds_writer.write(line)
 
 
-def build_mds(origin_ds_path, save_dir, model_names, labels, single_file=False, sigmas=None):
+def build_mds(
+    origin_ds_path, save_dir, model_names, labels, single_file=False, sigmas=None
+):
     columns = {
         "label": "int32",
         "loss_input": "float16",
@@ -108,7 +116,7 @@ def build_mds(origin_ds_path, save_dir, model_names, labels, single_file=False, 
         "image": "str",
         "hash": "str",
         "model_name": "str",
-        "num_part": "int32"
+        "num_part": "int32",
     }
     if sigmas is None:
         sigmas = {}
@@ -130,7 +138,7 @@ def get_mean_std(path):
     ds = get_streaming_ds(path, shuffle=False)
     losses = defaultdict(list)
     for x in ds:
-        key = f'{x["ds_name"]}_{x["model_name"]}'
+        key = f"{x['ds_name']}_{x['model_name']}"
         losses[key].append(x["loss_input"])
     sigmas = defaultdict(dict)
     for key, loss in losses.items():
@@ -146,7 +154,7 @@ def get_min_max(path):
     ds = get_streaming_ds(path, shuffle=False)
     losses = defaultdict(list)
     for x in ds:
-        key = f'{x["ds_name"]}_{x["model_name"]}'
+        key = f"{x['ds_name']}_{x['model_name']}"
         losses[key].append(x["loss_input"])
     sigmas = defaultdict(dict)
     for key, loss in losses.items():
@@ -162,21 +170,29 @@ def create_data_collator_std(sigmas_path, use_image=False):
     def data_collator(features):
         new_features = []
         for x in features:
-            key = f'{x["ds_name"]}_{x["model_name"]}'
+            key = f"{x['ds_name']}_{x['model_name']}"
             if key not in sigmas:
                 print("No key", key, "in", sigmas_path, "Use default.")
-                key = f'{x["ds_name"]}_no_leak'
+                key = f"{x['ds_name']}_no_leak"
             mean = sigmas[key]["mean"]
             std = sigmas[key]["std"]
-            new_features.append({
-                "loss_input": x["loss_input"],
-                "embedding_input": x["embedding_input"],
-                "label": x["label"],
-                "mean": mean,
-                "std": std
-            })
+            new_features.append(
+                {
+                    "loss_input": x["loss_input"],
+                    "embedding_input": x["embedding_input"],
+                    "label": x["label"],
+                    "mean": mean,
+                    "std": std,
+                }
+            )
             if use_image:
-                new_features[-1]["image_embedding_input"] = x["image_embedding_input"]
+                modality_emb = (
+                    x.get("image_embedding_input")
+                    or x.get("video_embedding_input")
+                    or x.get("audio_embedding_input")
+                )
+                if modality_emb is not None:
+                    new_features[-1]["modality_embedding_input"] = modality_emb
         return default_data_collator(new_features)
 
     return data_collator
@@ -188,21 +204,29 @@ def create_data_collator_minmax(sigmas_path, use_image=False):
     def data_collator(features):
         new_features = []
         for x in features:
-            key = f'{x["ds_name"]}_{x["model_name"]}'
+            key = f"{x['ds_name']}_{x['model_name']}"
             if key not in sigmas:
                 print("No key", key, "in", sigmas_path, "Use default.")
-                key = f'{x["ds_name"]}_no_leak'
+                key = f"{x['ds_name']}_no_leak"
             min_loss = sigmas[key]["min_loss"]
             loss_diff = sigmas[key]["loss_diff"]
-            new_features.append({
-                "loss_input": x["loss_input"],
-                "embedding_input": x["embedding_input"],
-                "label": x["label"],
-                "min_loss": min_loss,
-                "loss_diff": loss_diff
-            })
+            new_features.append(
+                {
+                    "loss_input": x["loss_input"],
+                    "embedding_input": x["embedding_input"],
+                    "label": x["label"],
+                    "min_loss": min_loss,
+                    "loss_diff": loss_diff,
+                }
+            )
             if use_image:
-                new_features[-1]["image_embedding_input"] = x["image_embedding_input"]
+                modality_emb = (
+                    x.get("image_embedding_input")
+                    or x.get("video_embedding_input")
+                    or x.get("audio_embedding_input")
+                )
+                if modality_emb is not None:
+                    new_features[-1]["modality_embedding_input"] = modality_emb
         return default_data_collator(new_features)
 
     return data_collator
@@ -213,14 +237,23 @@ def create_default_data_collator(use_image=False):
     def baseline_data_collator(features):
         new_features = []
         for x in features:
-            new_features.append({
-                "loss_input": x["loss_input"],
-                "embedding_input": x["embedding_input"],
-                "label": x["label"],
-            })
+            new_features.append(
+                {
+                    "loss_input": x["loss_input"],
+                    "embedding_input": x["embedding_input"],
+                    "label": x["label"],
+                }
+            )
             if use_image:
-                new_features[-1]["image_embedding_input"] = x["image_embedding_input"]
+                modality_emb = (
+                    x.get("image_embedding_input")
+                    or x.get("video_embedding_input")
+                    or x.get("audio_embedding_input")
+                )
+                if modality_emb is not None:
+                    new_features[-1]["modality_embedding_input"] = modality_emb
         return default_data_collator(new_features)
+
     return baseline_data_collator
 
 

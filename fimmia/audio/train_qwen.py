@@ -2,7 +2,12 @@ from torch.utils.data import Dataset
 import torch
 from trl import SFTConfig, SFTTrainer
 from peft import LoraConfig, get_peft_model
-from transformers import AutoTokenizer, HfArgumentParser, PreTrainedModel, AutoModelForCausalLM
+from transformers import (
+    AutoTokenizer,
+    HfArgumentParser,
+    PreTrainedModel,
+    AutoModelForCausalLM,
+)
 from typing import Dict, Any, List, Optional
 import pandas as pd
 from fimmia.sft_finetune_image import Args
@@ -22,7 +27,9 @@ def collate_fn(batch):
     for ids, mask, lbl in zip(input_ids, attention_mask, labels):
         padding_length = max_length - len(ids)
 
-        padded_input_ids.append(torch.cat([ids, torch.zeros(padding_length, dtype=torch.long)]))
+        padded_input_ids.append(
+            torch.cat([ids, torch.zeros(padding_length, dtype=torch.long)])
+        )
         padded_attention_mask.append(
             torch.cat([mask, torch.zeros(padding_length, dtype=torch.long)])
         )
@@ -75,10 +82,11 @@ class QwenAudioSFTTrainer(SFTTrainer):
 
 class SFTDataset(Dataset):
     def __init__(
-            self, data, model_id,
-            max_length: int = 2048,
-            system_prompt: str = "You are a helpful assistant.",
-
+        self,
+        data,
+        model_id,
+        max_length: int = 2048,
+        system_prompt: str = "You are a helpful assistant.",
     ):
         if isinstance(data, str):
             self.data = pd.read_csv(data)
@@ -141,16 +149,22 @@ class SFTDataset(Dataset):
         def tokenize(role: str, content: str) -> List[int]:
             audio_info = self.tokenizer.process_audio(content)
             role_tokens = self.tokenizer.encode(
-                role, allowed_special=set(self.tokenizer.AUDIO_ST), audio_info=audio_info
+                role,
+                allowed_special=set(self.tokenizer.AUDIO_ST),
+                audio_info=audio_info,
             )
             content_tokens = self.tokenizer.encode(
-                content, allowed_special=set(self.tokenizer.AUDIO_ST), audio_info=audio_info
+                content,
+                allowed_special=set(self.tokenizer.AUDIO_ST),
+                audio_info=audio_info,
             )
             return role_tokens + nl_tokens + content_tokens
 
         system_tokens_part = tokenize("system", self.system_prompt)
         system_tokens = im_start_tokens + system_tokens_part + im_end_tokens + nl_tokens
-        query_tokens = im_start_tokens + tokenize("user", query) + im_end_tokens + nl_tokens
+        query_tokens = (
+            im_start_tokens + tokenize("user", query) + im_end_tokens + nl_tokens
+        )
         answer_tokens = im_start_tokens + tokenize("assistant", answer) + im_end_tokens
         return system_tokens + query_tokens + answer_tokens
 
@@ -217,7 +231,7 @@ def main():
         max_length=None,
         dataset_kwargs={"skip_prepare_dataset": True},
         dataloader_pin_memory=False,
-        remove_unused_columns=False
+        remove_unused_columns=False,
     )
     # SFTTrainer
     trainer = QwenAudioSFTTrainer(
@@ -227,7 +241,7 @@ def main():
         eval_dataset=test_ds,
         peft_config=peft_config,
         data_collator=collate_fn,
-        processing_class=train_ds.tokenizer
+        processing_class=train_ds.tokenizer,
     )
     trainer.train()
     trainer.save_model(training_args.output_dir)

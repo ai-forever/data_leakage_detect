@@ -23,7 +23,9 @@ def get_sample_scores(group_model):
     y_true = []
     y_pred = []
     labels = []
-    for label, group_label in tqdm(group_model.groupby("label"), total=len(group_model)):
+    for label, group_label in tqdm(
+        group_model.groupby("label"), total=len(group_model)
+    ):
         for _, group in group_label.groupby("hash"):
             scc = np.vstack(group.score)
             scc = torch.nn.functional.softmax(torch.Tensor(scc)).numpy()
@@ -67,7 +69,10 @@ def get_metrics_from_scores(new_scores, new_labels, y_true_n, y_pred_n):
                 labels.extend(new_labels[ds_name][model_name])
                 y_trues.extend(y_true_n[ds_name][model_name])
                 y_preds.extend(y_pred_n[ds_name][model_name])
-        m = {n: x[0] for n, x in dict(fimmia.get_metrics({"fimmia": scores}, labels)).items()}
+        m = {
+            n: x[0]
+            for n, x in dict(fimmia.get_metrics({"fimmia": scores}, labels)).items()
+        }
         acc = accuracy_score(y_trues, y_preds)
         m["per_neighbors_acc"] = acc
         m["acc"] = accuracy_score(labels, np.array(scores) > 0.5)
@@ -84,7 +89,10 @@ def convert_str(s):
 def get_metrics_from_df(df):
     cscores, labels, y_true, y_pred = get_sample_scores(df)
     fimmia = FiMMIA()
-    m = {n: x[0] for n, x in dict(fimmia.get_metrics({"fimmia": cscores}, labels)).items()}
+    m = {
+        n: x[0]
+        for n, x in dict(fimmia.get_metrics({"fimmia": cscores}, labels)).items()
+    }
     m["acc"] = accuracy_score(labels, np.array(cscores) > 0.5)
     m["per_neighbors_acc"] = accuracy_score(y_true, y_pred)
     m = pd.DataFrame([m])
@@ -100,19 +108,21 @@ def get_df_with_predictions(data: str, trainer: Trainer):
         raw_preds_test = trainer.predict(ds_test)
     lines = []
     for x, score in zip(ds_test, raw_preds_test.predictions):
-        lines.append({
-            "ds_name": x["ds_name"],
-            # "model_name": x["model_name"],
-            "hash": x["hash"],
-            "label": x["label"],
-            "score": score
-        })
+        lines.append(
+            {
+                "ds_name": x["ds_name"],
+                # "model_name": x["model_name"],
+                "hash": x["hash"],
+                "label": x["label"],
+                "score": score,
+            }
+        )
     df_test = pd.DataFrame(lines)
     return df_test
 
 
 def main():
-    parser = HfArgumentParser((MetricArgs, ))
+    parser = HfArgumentParser((MetricArgs,))
     args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
     df = pd.read_csv(args.test_path)
     df.score = list(map(convert_str, df.score))

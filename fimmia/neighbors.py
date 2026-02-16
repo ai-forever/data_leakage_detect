@@ -1,11 +1,20 @@
-from transformers import AutoTokenizer, T5ForConditionalGeneration, T5Config, HfArgumentParser
+from transformers import (
+    AutoTokenizer,
+    T5ForConditionalGeneration,
+    T5Config,
+    HfArgumentParser,
+)
 from tqdm import tqdm
 from dataclasses import dataclass
 from copy import deepcopy
+import os
 import numpy as np
 import pandas as pd
 import torch
 import string
+from typing import Optional
+
+from fimmia.modality_perturbation import get_modality_neighbors
 
 
 @dataclass
@@ -25,6 +34,8 @@ class Args:
     num_parts: int = 5
     max_text_len: int = 3000
     user_answer: int = 0
+    modality_column: Optional[str] = None
+    modality_output_dir: Optional[str] = None
 
 
 class NeighborsGenerator:
@@ -32,7 +43,7 @@ class NeighborsGenerator:
         self.t5_tokenizer = None
         self.t5_mlm = None
         self.args = args
-        self._trans = str.maketrans('', '', string.punctuation)
+        self._trans = str.maketrans("", "", string.punctuation)
 
     @staticmethod
     def load_data(dataset_path):
@@ -41,38 +52,61 @@ class NeighborsGenerator:
     def load_model_and_tokenizer(self):
         if self.t5_tokenizer is None:
             if "FRED" in self.args.model_path:
-                self.t5_tokenizer = AutoTokenizer.from_pretrained(self.args.model_path, eos_token='</s>')
+                self.t5_tokenizer = AutoTokenizer.from_pretrained(
+                    self.args.model_path, eos_token="</s>"
+                )
             else:
                 self.t5_tokenizer = AutoTokenizer.from_pretrained(self.args.model_path)
         if self.t5_mlm is None:
             t5_config = T5Config.from_pretrained(self.args.model_path)
-            self.t5_mlm = T5ForConditionalGeneration.from_pretrained(self.args.model_path, config=t5_config).cuda()
-            self.t5_mlm = torch.compile(self.t5_mlm, mode="reduce-overhead", fullgraph=True)
+            self.t5_mlm = T5ForConditionalGeneration.from_pretrained(
+                self.args.model_path, config=t5_config
+            ).cuda()
+            self.t5_mlm = torch.compile(
+                self.t5_mlm, mode="reduce-overhead", fullgraph=True
+            )
 
     def fill_mask(self, text, max_length):
         text = self.args.prefix_token + text
         with torch.inference_mode():
-            encoded = self.t5_tokenizer.encode_plus(text, add_special_tokens=True, return_tensors='pt')
-            input_ids = encoded['input_ids'].cuda()
+            encoded = self.t5_tokenizer.encode_plus(
+                text, add_special_tokens=True, return_tensors="pt"
+            )
+            input_ids = encoded["input_ids"].cuda()
             outputs = self.t5_mlm.generate(
                 input_ids=input_ids,
                 num_return_sequences=self.args.num_return_sequences,
-                max_length=max_length
+                max_length=max_length,
             )
             res = []
             index = text.index(self.args.mask_token)
             result_prefix = text[:index].strip()
-            result_suffix = text[index + len(self.args.mask_token):].strip()
+            result_suffix = text[index + len(self.args.mask_token) :].strip()
             for output in outputs:
                 generated = self.t5_tokenizer.decode(
-                    output[2:], skip_special_tokens=False, clean_up_tokenization_spaces=False)
+                    output[2:],
+                    skip_special_tokens=False,
+                    clean_up_tokenization_spaces=False,
+                )
                 if self.args.end_token in generated:
                     end_token_index = generated.index(self.args.end_token)
-                    generated = result_prefix + " " + generated[:end_token_index].strip() + " " + result_suffix
+                    generated = (
+                        result_prefix
+                        + " "
+                        + generated[:end_token_index].strip()
+                        + " "
+                        + result_suffix
+                    )
                 else:
-                    generated = result_prefix + " " + generated.strip() + " " + result_suffix
+                    generated = (
+                        result_prefix + " " + generated.strip() + " " + result_suffix
+                    )
                 res.append(
-                    generated.replace("</s>", " ").replace("<s>", " ").replace(self.args.prefix_token, "").strip())
+                    generated.replace("</s>", " ")
+                    .replace("<s>", " ")
+                    .replace(self.args.prefix_token, "")
+                    .strip()
+                )
         return str(np.random.choice(res))
 
     def filter_punctuation(self, tokens):
@@ -93,9 +127,15 @@ class NeighborsGenerator:
                 token_ids = self.filter_punctuation(current_text)
                 try:
                     replace_idx = np.random.choice(token_ids)
-                    max_length = len(self.t5_tokenizer.encode([current_text[replace_idx]])) + self.args.max_length_ratio
+                    max_length = (
+                        len(self.t5_tokenizer.encode([current_text[replace_idx]]))
+                        + self.args.max_length_ratio
+                    )
                 except TypeError:
-                    max_length = len(self.t5_tokenizer.encode(current_text[replace_idx])) + self.args.max_length_ratio
+                    max_length = (
+                        len(self.t5_tokenizer.encode(current_text[replace_idx]))
+                        + self.args.max_length_ratio
+                    )
                 current_text[replace_idx] = self.args.mask_token
                 current_text = " ".join(current_text)
                 current_text = self.fill_mask(text=current_text, max_length=max_length)
@@ -109,14 +149,13 @@ class NeighborsGenerator:
             deleted_ids = []
             new_token_ids = deepcopy(token_ids)
             for _ in range(mask_count):
-                try:
-                    idx = np.random.choice(new_token_ids)
-                    new_token_ids.remove(idx)
-                    shift = len([1 for x in deleted_ids if x <= idx])
-                    deleted_ids.append(idx)
-                    new_tokens.pop(idx - shift)
-                except:
-                    pass
+                if not new_token_ids:
+                    break
+                idx = np.random.choice(new_token_ids)
+                new_token_ids.remove(idx)
+                shift = len([1 for x in deleted_ids if x <= idx])
+                deleted_ids.append(idx)
+                new_tokens.pop(idx - shift)
             res.append(" ".join(new_tokens))
         return res
 
@@ -156,24 +195,33 @@ class NeighborsGenerator:
         min_masks = max(0, min(self.args.min_masks, len(token_ids) - 1))
         mask_count = min(max(mask_count, min_masks), self.args.max_masks)
         try:
-            substituting_neighbors = self.substituting_neighbors(text=text, n=size, mask_count=mask_count)
-        except:
+            substituting_neighbors = self.substituting_neighbors(
+                text=text, n=size, mask_count=mask_count
+            )
+        except (ValueError, IndexError, RuntimeError, OSError):
             substituting_neighbors = []
         try:
             deletion_neighbors = self.deletion_neighbors(
-                token_ids=token_ids, tokens=tokens, n=size, mask_count=mask_count)
-        except:
+                token_ids=token_ids, tokens=tokens, n=size, mask_count=mask_count
+            )
+        except (ValueError, IndexError, RuntimeError, OSError):
             deletion_neighbors = []
         try:
             duplication_neighbors = self.duplication_neighbors(
-                token_ids=token_ids, tokens=tokens, n=size, mask_count=mask_count)
-        except:
+                token_ids=token_ids, tokens=tokens, n=size, mask_count=mask_count
+            )
+        except (ValueError, IndexError, RuntimeError, OSError):
             duplication_neighbors = []
         try:
             swap_neighbors = self.swap_neighbors(tokens, n=size, mask_count=mask_count)
-        except:
+        except (ValueError, IndexError, RuntimeError, OSError):
             swap_neighbors = []
-        neighbors = substituting_neighbors + deletion_neighbors + duplication_neighbors + swap_neighbors
+        neighbors = (
+            substituting_neighbors
+            + deletion_neighbors
+            + duplication_neighbors
+            + swap_neighbors
+        )
         return neighbors
 
     def predict(self, dataset_path):
@@ -181,22 +229,57 @@ class NeighborsGenerator:
         self.load_model_and_tokenizer()
         neighbors = []
         new_input = []
-        if self.args.user_answer:
-            data_iter = data.answer
+        modality_neighbors_list = []
+        # When modality_column is set and present, generate one modality neighbor per text neighbor.
+        use_modality = (
+            self.args.modality_column is not None
+            and str(self.args.modality_column).strip()
+            and self.args.modality_column in data.columns
+        )
+        if use_modality:
+            output_dir = self.args.modality_output_dir
+            if output_dir is None:
+                output_dir = os.path.join(
+                    os.path.dirname(dataset_path), "modality_neighbors"
+                )
+            os.makedirs(output_dir, exist_ok=True)
         else:
-            data_iter = data.input
+            output_dir = None
 
-        for text in tqdm(data_iter, total=len(data), leave=True):
-            text = text[-self.args.max_text_len:]
+        for row_idx in tqdm(range(len(data)), total=len(data), leave=True):
+            if self.args.user_answer:
+                text = data.iloc[row_idx].answer
+            else:
+                text = data.iloc[row_idx].input
+            text = text[-self.args.max_text_len :]
             new_input.append(text)
-            neighbors.append(self.get_neighbors_for_sample(
-                text=text,
-            ))
+            text_neighbors = self.get_neighbors_for_sample(text=text)
+            neighbors.append(text_neighbors)
+
+            if use_modality:
+                row = data.iloc[row_idx]
+                mod_path = row.get(self.args.modality_column)
+                num_n = len(text_neighbors)
+                paths = get_modality_neighbors(
+                    modality_type=self.args.modality_column,
+                    path=mod_path,
+                    num_neighbors=num_n,
+                    output_dir=output_dir,
+                    row_index=row_idx,
+                )
+                if len(paths) < num_n:
+                    paths = paths + [mod_path] * (num_n - len(paths))
+                modality_neighbors_list.append(paths[:num_n])
+            else:
+                modality_neighbors_list.append(None)
+
         data["neighbors"] = neighbors
         if self.args.user_answer:
             data["answer"] = new_input
         else:
             data["input"] = new_input
+        if use_modality:
+            data["modality_neighbors"] = modality_neighbors_list
 
         return data
 
@@ -208,7 +291,7 @@ class NeighborsGenerator:
 
 
 def main():
-    parser = HfArgumentParser((Args, ))
+    parser = HfArgumentParser((Args,))
     args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
     NeighborsGenerator.run_on_batch(args)
 

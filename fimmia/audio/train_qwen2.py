@@ -1,19 +1,23 @@
-from fimmia.video.train_qwen25vl import *
-from transformers import Qwen2AudioForConditionalGeneration
-
-
-MODEL_DICT = {
-    "Qwen/Qwen2-Audio-7B-Instruct": Qwen2AudioForConditionalGeneration,
-}
+from transformers import HfArgumentParser
+from trl import SFTConfig, SFTTrainer
+from peft import LoraConfig, get_peft_model
+import torch
+from fimmia.video.train_qwen25vl import Args, SFTDataset, MODEL_DICT
 
 
 def main():
     parser = HfArgumentParser((Args,))
     args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
-    train_ds = SFTDataset(data=args.train_df_path, modality="audio", model_id=args.model_id)
-    test_ds = SFTDataset(data=args.test_df_path, modality="audio", model_id=args.model_id)
+    train_ds = SFTDataset(
+        data=args.train_df_path, modality="audio", model_id=args.model_id
+    )
+    test_ds = SFTDataset(
+        data=args.test_df_path, modality="audio", model_id=args.model_id
+    )
     model_cls = MODEL_DICT[args.model_id]
-    model = model_cls.from_pretrained(args.model_id, device_map="auto", dtype=torch.bfloat16)
+    model = model_cls.from_pretrained(
+        args.model_id, device_map="auto", dtype=torch.bfloat16
+    )
     peft_config = LoraConfig(
         lora_alpha=16,
         lora_dropout=0.05,
@@ -55,7 +59,7 @@ def main():
         data_seed=1234,
         max_length=None,
         dataset_kwargs={"skip_prepare_dataset": True},
-        dataloader_pin_memory=False
+        dataloader_pin_memory=False,
     )
     data_collator = train_ds.create_data_collator()
     trainer = SFTTrainer(

@@ -1,8 +1,13 @@
 from tqdm import tqdm
 from copy import deepcopy
-from fimmia.sft_finetune_image import *
+from dataclasses import dataclass
 import os
 import pandas as pd
+import torch
+import datasets
+from trl import SFTConfig, SFTTrainer
+from transformers import HfArgumentParser
+from fimmia.sft_finetune_image import MODEL_DICT
 
 
 @dataclass
@@ -16,9 +21,9 @@ class Args:
 
 def format_sample(text, image, answer):
     sample = {
-        'images': [image],
-        'prompt': [{'content': text,'role': 'user'}],
-        'completion': [{'content': answer, 'role': 'assistant'}]
+        "images": [image],
+        "prompt": [{"content": text, "role": "user"}],
+        "completion": [{"content": answer, "role": "assistant"}],
     }
     return sample
 
@@ -31,7 +36,9 @@ class LossCalculator:
 
     def load_model(self):
         model_cls = MODEL_DICT[self.args.model_name]
-        self.model = model_cls.from_pretrained(self.args.model_name, device_map="auto", dtype=torch.bfloat16)
+        self.model = model_cls.from_pretrained(
+            self.args.model_name, device_map="auto", dtype=torch.bfloat16
+        )
 
     def get_loss(self, text, image, answer):
         # TODO: rewrite this o my goh
@@ -39,36 +46,74 @@ class LossCalculator:
         trainer = SFTTrainer(
             model=self.model,
             args=SFTConfig(
-                prediction_loss_only=True, per_device_train_batch_size=1, disable_tqdm=True, max_length=None),
+                prediction_loss_only=True,
+                per_device_train_batch_size=1,
+                disable_tqdm=True,
+                max_length=None,
+            ),
             train_dataset=ds,
         )
         loss = trainer.predict(trainer.train_dataset).metrics["test_loss"]
         return loss
 
+    def _neighbor_specs(self, row):
+        """Return list of (neighbor_text, modality_path) for this row, in order used for loss computation."""
+        neighbors = eval(row["neighbors"])
+        modality_key = "image"
+        mod_list = None
+        if "modality_neighbors" in row and pd.notna(row.get("modality_neighbors")):
+            try:
+                mod_list = (
+                    eval(row["modality_neighbors"])
+                    if isinstance(row["modality_neighbors"], str)
+                    else row["modality_neighbors"]
+                )
+            except Exception:
+                pass
+        if (
+            mod_list is not None
+            and isinstance(mod_list, list)
+            and len(mod_list) == len(neighbors)
+        ):
+            return [(n, mod_list[i]) for i, n in enumerate(neighbors)]
+        mod_path = row[modality_key]
+        return [(n, mod_path) for n in set(neighbors)]
+
     def prc_df(self):
         save_dir = os.path.join(
-            self.args.df_path[:-4], "loss", self.model_name, "leak" if self.args.label else "no_leak")
+            self.args.df_path[:-4],
+            "loss",
+            self.model_name,
+            "leak" if self.args.label else "no_leak",
+        )
         os.makedirs(save_dir, exist_ok=True)
         lines = []
         df = pd.read_csv(self.args.df_path)
         num_part = 0
         res = []
-        for _, row in tqdm(df.iterrows(), total=len(df), desc=f"prc {self.args.df_path}"):
+        neighbor_specs_per_row = [self._neighbor_specs(row) for _, row in df.iterrows()]
+        for (_, row), specs in tqdm(
+            zip(df.iterrows(), neighbor_specs_per_row),
+            total=len(df),
+            desc=f"prc {self.args.df_path}",
+        ):
             row.label = self.args.label
             new_row = dict(row)
-            neighbors = eval(new_row.pop("neighbors"))
+            new_row.pop("neighbors", None)
+            new_row.pop("modality_neighbors", None)
             input_loss = self.get_loss(row.input, row.image, row.answer)
             is_add = True
-            for neighbor in set(neighbors):
+            for neighbor, mod_path in specs:
                 line = deepcopy(new_row)
                 line["neighbor"] = neighbor
+                line["image"] = mod_path
                 if self.args.user_answer:
                     text = row.input
                     answer = neighbor
                 else:
                     text = neighbor
                     answer = row.answer
-                line["neighbor_loss"] = self.get_loss(text, row.image, answer)
+                line["neighbor_loss"] = self.get_loss(text, mod_path, answer)
                 if is_add:
                     is_add = False
                     line["input_loss"] = input_loss
@@ -91,7 +136,7 @@ class LossCalculator:
 
 
 def main():
-    parser = HfArgumentParser((Args, ))
+    parser = HfArgumentParser((Args,))
     args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
 
     loss_calc = LossCalculator(args)

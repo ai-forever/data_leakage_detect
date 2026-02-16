@@ -20,7 +20,7 @@ class ModelArguments:
     model_name: str = "BaseLineModel"
     embedding_size: int = 4096
     projection_size: int = 512
-    image_embedding_size: int = 1024
+    modality_embedding_size: int = 1024
     model_path: str = None
     sigmas_path: str = None
     sigmas_type: str = None
@@ -49,27 +49,21 @@ class DefaultTrainingArguments:
 
 
 def train(
-        model_args: ModelArguments,
-        data_args: DataTrainingArguments,
-        training_args: TrainingArguments,
-        data_collator=default_data_collator
+    model_args: ModelArguments,
+    data_args: DataTrainingArguments,
+    training_args: TrainingArguments,
+    data_collator=default_data_collator,
 ):
     train_paths = data_args.train_dataset_path
     if isinstance(train_paths, str):
         train_paths = train_paths.split(",")
     model = init_model(model_args)
-    train_ds = get_streaming_ds(
-        paths=train_paths,
-        shuffle=True
-    )
+    train_ds = get_streaming_ds(paths=train_paths, shuffle=True)
     val_paths = data_args.val_dataset_path
     if val_paths is not None:
         if isinstance(val_paths, str):
             val_paths = val_paths.split(",")
-        val_ds = get_streaming_ds(
-            paths=val_paths,
-            shuffle=False
-        )
+        val_ds = get_streaming_ds(paths=val_paths, shuffle=False)
     else:
         val_ds = None
     trainer = Trainer(
@@ -77,7 +71,7 @@ def train(
         args=TrainingArguments(**asdict(training_args)),
         train_dataset=train_ds,
         eval_dataset=val_ds,
-        data_collator=data_collator
+        data_collator=data_collator,
     )
     try:
         trainer.train()
@@ -95,11 +89,18 @@ def train(
 
 
 def main():
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, DefaultTrainingArguments))
-    model_args, data_args, training_args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
+    parser = HfArgumentParser(
+        (ModelArguments, DataTrainingArguments, DefaultTrainingArguments)
+    )
+    model_args, data_args, training_args, _ = parser.parse_args_into_dataclasses(
+        return_remaining_strings=True
+    )
     data_collator = create_data_collator(
-        model_args.model_name, sigmas_path=model_args.sigmas_path, sigmas_type=model_args.sigmas_type)
-    train(model_args, data_args, training_args)
+        model_args.model_name,
+        sigmas_path=model_args.sigmas_path,
+        sigmas_type=model_args.sigmas_type,
+    )
+    train(model_args, data_args, training_args, data_collator)
 
 
 if __name__ == "__main__":

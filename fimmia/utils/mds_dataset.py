@@ -36,8 +36,14 @@ def get_streaming_ds(paths, shuffle=False):
 
 class MDSDataset:
     def __init__(
-            self, mds_dataset_paths, model_name, labels,
-            origin_df_path=None, shuffle=False, modality_key="image", sigmas_fields=None
+        self,
+        mds_dataset_paths,
+        model_name,
+        labels,
+        origin_df_path=None,
+        shuffle=False,
+        modality_key="image",
+        sigmas_fields=None,
     ):
         self.mds_dataset_paths = mds_dataset_paths
         if isinstance(self.mds_dataset_paths, str):
@@ -62,7 +68,7 @@ class MDSDataset:
             "embedding_input": "ndarray",
             "hash": "str",
             "model_name": "str",
-            "num_part": "int32"
+            "num_part": "int32",
         }
         if self.sigmas_fields is not None:
             for key in self.sigmas_fields:
@@ -78,10 +84,16 @@ class MDSDataset:
         working_dir = df_path[:-4]
         embeds_dir = os.path.join(working_dir, "embeds")
         modality_embeds_dir = os.path.join(working_dir, f"{self.modality_key}_embeds")
-        loss_dir = os.path.join(working_dir, "loss", self.model_name, "leak" if label else "no_leak")
+        loss_dir = os.path.join(
+            working_dir, "loss", self.model_name, "leak" if label else "no_leak"
+        )
         num_parts = len(glob(f"{embeds_dir}/*.csv"))
-        for num_part in tqdm(range(num_parts), total=num_parts, desc=f"prc df {df_path}"):
-            yield self.merge_part(embeds_dir, modality_embeds_dir, loss_dir, num_part, label)
+        for num_part in tqdm(
+            range(num_parts), total=num_parts, desc=f"prc df {df_path}"
+        ):
+            yield self.merge_part(
+                embeds_dir, modality_embeds_dir, loss_dir, num_part, label
+            )
 
     def merge_part(self, embeds_dir, modality_embeds_dir, loss_dir, num_part, label):
         df_embeds = pd.read_csv(os.path.join(embeds_dir, f"part_{num_part}.csv"))
@@ -92,8 +104,13 @@ class MDSDataset:
         df_loss["input_embeds"] = df_embeds.input_embeds
         df_loss["model_name"] = self.model_name
         df_loss["hash"] = [
-            str(hash(f"{x.input}{x.answer}{self.get_modality_input(x)}{x.ds_name}{x.label}{self.model_name}"))
-            for _, x in df_loss.iterrows()]
+            str(
+                hash(
+                    f"{x.input}{x.answer}{self.get_modality_input(x)}{x.ds_name}{x.label}{self.model_name}"
+                )
+            )
+            for _, x in df_loss.iterrows()
+        ]
         df_loss["num_part"] = num_part
 
         modality_embeds_path = os.path.join(modality_embeds_dir, f"part_{num_part}.csv")
@@ -101,8 +118,12 @@ class MDSDataset:
             self.modality_exists = True
             self.columns[f"{self.modality_key}_embedding_input"] = "ndarray"
             df_modality_embeds = pd.read_csv(modality_embeds_path)
-            df_loss[self.neighbor_modality_key] = df_modality_embeds[self.neighbor_modality_key]
-            df_loss[self.input_modality_key] = df_modality_embeds[self.input_modality_key]
+            df_loss[self.neighbor_modality_key] = df_modality_embeds[
+                self.neighbor_modality_key
+            ]
+            df_loss[self.input_modality_key] = df_modality_embeds[
+                self.input_modality_key
+            ]
 
         return df_loss
 
@@ -114,10 +135,14 @@ class MDSDataset:
         if self.modality_exists:
             if isinstance(row[self.neighbor_modality_key], str):
                 row[self.neighbor_modality_key] = eval(row[self.neighbor_modality_key])
-            row[self.neighbor_modality_key] = np.array(row[self.neighbor_modality_key], dtype=float)
+            row[self.neighbor_modality_key] = np.array(
+                row[self.neighbor_modality_key], dtype=float
+            )
             if isinstance(row[self.input_modality_key], str):
                 row[self.input_modality_key] = eval(row[self.input_modality_key])
-            row[self.input_modality_key] = np.array(row[self.input_modality_key], dtype=float)
+            row[self.input_modality_key] = np.array(
+                row[self.input_modality_key], dtype=float
+            )
         row["input_embeds"] = np.array(row["input_embeds"], dtype=float)
         row["neighbor_embeds"] = np.array(row["neighbor_embeds"], dtype=float)
 
@@ -131,6 +156,8 @@ class MDSDataset:
         return row
 
     def get_modality_input(self, row):
+        # When modality_neighbors was used in neighbor generation, loss_calc writes the
+        # per-neighbor modality path into this column, so each row has a single path.
         if self.modality_key in ["image", "video"]:
             modality_input = row[self.modality_key]
         else:
@@ -159,9 +186,11 @@ class MDSDataset:
         }
         if self.modality_exists:
             modality_key = f"{self.modality_key}_embedding_input"
-            line[modality_key] = row[self.neighbor_modality_key] - row[self.input_modality_key]
+            line[modality_key] = (
+                row[self.neighbor_modality_key] - row[self.input_modality_key]
+            )
         if sigmas is not None:
-            key = f'{row.ds_name}_{row.model_name}'
+            key = f"{row.ds_name}_{row.model_name}"
             for key in self.sigmas_fields:
                 line[key] = sigmas.get(key, {key: 1})[key]
         return line
@@ -173,7 +202,11 @@ class MDSDataset:
         if single_file:
             ds_file_paths = [self.origin_df_path]
         else:
-            ds_file_paths = glob(os.path.join(os.path.split(self.origin_df_path)[0], f"{ds_name}_ng_parts/*.csv"))
+            ds_file_paths = glob(
+                os.path.join(
+                    os.path.split(self.origin_df_path)[0], f"{ds_name}_ng_parts/*.csv"
+                )
+            )
         with MDSWriter(out=save_dir, columns=self.columns, exist_ok=True) as ds_writer:
             pbar = tqdm(ds_file_paths, total=len(ds_file_paths))
             for df_path in pbar:
@@ -194,15 +227,19 @@ class MDSDataset:
 
 
 def main():
-    parser = HfArgumentParser((DatasetBuilderArguments, ))
+    parser = HfArgumentParser((DatasetBuilderArguments,))
     args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
     sigmas = None
     if args.sigmas_path is not None:
         sigmas = load_json(args.sigmas_path)
     dataset = MDSDataset(
-        mds_dataset_paths=args.save_dir, model_name=args.model_name,
-        labels=args.labels, origin_df_path=args.origin_df_path,
-        shuffle=args.shuffle, modality_key=args.modality_key, sigmas_fields=args.sigmas_fields
+        mds_dataset_paths=args.save_dir,
+        model_name=args.model_name,
+        labels=args.labels,
+        origin_df_path=args.origin_df_path,
+        shuffle=args.shuffle,
+        modality_key=args.modality_key,
+        sigmas_fields=args.sigmas_fields,
     )
     dataset.build(single_file=args.single_file, sigmas=sigmas)
 

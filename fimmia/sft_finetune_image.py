@@ -12,7 +12,7 @@ MODEL_DICT = {
     "Qwen/Qwen2.5-VL-7B-Instruct": AutoModelForVision2Seq,
     "llava-hf/llama3-llava-next-8b-hf": AutoModelForVision2Seq,
     "google/gemma-3-4b-it": AutoModelForCausalLM,
-    "google/gemma-3-12b-it": AutoModelForCausalLM
+    "google/gemma-3-12b-it": AutoModelForCausalLM,
 }
 
 
@@ -46,7 +46,9 @@ def main():
     parser = HfArgumentParser((Args,))
     args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
     model_cls = MODEL_DICT[args.model_id]
-    model = model_cls.from_pretrained(args.model_id, device_map="auto", dtype=torch.bfloat16)
+    model = model_cls.from_pretrained(
+        args.model_id, device_map="auto", dtype=torch.bfloat16
+    )
     peft_config = LoraConfig(
         lora_alpha=16,
         lora_dropout=0.05,
@@ -95,7 +97,7 @@ def main():
         args=training_args,
         train_dataset=train_ds,
         eval_dataset=test_ds,
-        peft_config=peft_config
+        peft_config=peft_config,
     )
     trainer.train()
     trainer.save_model(training_args.output_dir)

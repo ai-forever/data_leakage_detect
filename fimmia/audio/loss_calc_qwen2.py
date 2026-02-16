@@ -1,10 +1,11 @@
 from tqdm import tqdm
 from copy import deepcopy
 from dataclasses import dataclass
-from fimmia.video.train_qwen25vl import *
-from transformers import Qwen2AudioForConditionalGeneration
 import os
 import pandas as pd
+import torch
+from transformers import Qwen2AudioForConditionalGeneration, HfArgumentParser
+from fimmia.video.train_qwen25vl import SFTDataset
 
 
 @dataclass
@@ -21,11 +22,16 @@ def create_data_collator(self: SFTDataset):
     def data_collator(features):
         modality_inputs = []
         conversation = list(map(self.format_sample, features))
-        text = self.processor.apply_chat_template(conversation, add_generation_prompt=False, tokenize=False)
+        text = self.processor.apply_chat_template(
+            conversation, add_generation_prompt=False, tokenize=False
+        )
         modality_inputs = {f"{self.modality}": self.load_modality_input(conversation)}
         inputs = self.processor(
-            text=text, **modality_inputs, return_tensors="pt", padding=True,
-            sampling_rate=self.processor.feature_extractor.sampling_rate
+            text=text,
+            **modality_inputs,
+            return_tensors="pt",
+            padding=True,
+            sampling_rate=self.processor.feature_extractor.sampling_rate,
         ).to("cuda")
         labels: torch.Tensor = inputs["input_ids"].clone()
         eos_token = getattr(self.processor, f"{self.modality}_eos_token")
@@ -38,6 +44,7 @@ def create_data_collator(self: SFTDataset):
         # print(inputs)
         inputs["labels"] = labels
         return inputs
+
     return data_collator
 
 
@@ -49,36 +56,73 @@ class LossCalculator:
 
     def load_model(self):
         self.model = Qwen2AudioForConditionalGeneration.from_pretrained(
-            self.args.model_name, device_map="auto", dtype=torch.bfloat16).cuda()
+            self.args.model_name, device_map="auto", dtype=torch.bfloat16
+        ).cuda()
+
+    def _get_audio_path(self, row):
+        audio = row.get("audio")
+        if audio is None or (isinstance(audio, float) and pd.isna(audio)):
+            audio = row.get("audio_1")
+        if audio is None or (isinstance(audio, float) and pd.isna(audio)):
+            audio = row.get("audio_2")
+        return audio
+
+    def _neighbor_specs(self, row):
+        """Return list of (neighbor_text, modality_path) for this row."""
+        neighbors = eval(row["neighbors"])
+        mod_list = None
+        if "modality_neighbors" in row and pd.notna(row.get("modality_neighbors")):
+            try:
+                mod_list = (
+                    eval(row["modality_neighbors"])
+                    if isinstance(row["modality_neighbors"], str)
+                    else row["modality_neighbors"]
+                )
+            except Exception:
+                pass
+        if (
+            mod_list is not None
+            and isinstance(mod_list, list)
+            and len(mod_list) == len(neighbors)
+        ):
+            return [(n, mod_list[i]) for i, n in enumerate(neighbors)]
+        mod_path = self._get_audio_path(row)
+        return [(n, mod_path) for n in set(neighbors)]
 
     def prc_df(self):
         save_dir = os.path.join(
-            self.args.df_path[:-4], "loss", self.model_name, "leak" if self.args.label else "no_leak")
+            self.args.df_path[:-4],
+            "loss",
+            self.model_name,
+            "leak" if self.args.label else "no_leak",
+        )
         os.makedirs(save_dir, exist_ok=True)
         df = pd.read_csv(self.args.df_path)
         input_ds = []
         neighbor_ds = []
-        for idx, row in tqdm(df.iterrows(), total=len(df), desc=f"prc {self.args.df_path}"):
-
-            neighbors = eval(row["neighbors"])
+        neighbor_specs_per_row = []
+        for idx, row in tqdm(
+            df.iterrows(), total=len(df), desc=f"prc {self.args.df_path}"
+        ):
+            specs = self._neighbor_specs(row)
+            neighbor_specs_per_row.append(specs)
             input_ds.append(row)
-            for neighbor in set(neighbors):
+            for neighbor, audio in specs:
                 if self.args.user_answer:
                     text = row.input
                     answer = neighbor
                 else:
                     text = neighbor
                     answer = row.answer
-                audio = row["audio"]
-                if isinstance(audio, float):
-                    audio = row["audio_1"]
-                if isinstance(audio, float):
-                    audio = row["audio_2"]
                 new_row = {"input": text, "answer": answer, "audio": audio}
                 neighbor_ds.append(new_row)
 
-        test_ds = SFTDataset(data=input_ds, modality="audio", model_id=self.args.model_id)
-        test_ds_neighbors = SFTDataset(data=neighbor_ds, modality="audio", model_id=self.args.model_id)
+        test_ds = SFTDataset(
+            data=input_ds, modality="audio", model_id=self.args.model_id
+        )
+        test_ds_neighbors = SFTDataset(
+            data=neighbor_ds, modality="audio", model_id=self.args.model_id
+        )
 
         input_losses = self.get_losses(test_ds)
         neighbor_losses = self.get_losses(test_ds_neighbors)
@@ -86,16 +130,21 @@ class LossCalculator:
         num_part = 0
         lines = []
         res = []
-        for (_, row), input_loss in tqdm(zip(df.iterrows(), input_losses), total=len(df), ):
+        line_idx = 0
+        for (_, row), input_loss, specs in tqdm(
+            zip(df.iterrows(), input_losses, neighbor_specs_per_row),
+            total=len(df),
+        ):
             row.label = 1
             new_row = dict(row)
-            neighbors = eval(new_row.pop("neighbors"))
-            is_add = True
-            for neighbor in set(neighbors):
+            new_row.pop("neighbors", None)
+            for neighbor, audio in specs:
                 line = deepcopy(new_row)
                 line["neighbor"] = neighbor
-                line["neighbor_loss"] = neighbor_losses[len(lines)]
+                line["audio"] = audio
+                line["neighbor_loss"] = neighbor_losses[line_idx]
                 line["input_loss"] = input_loss
+                line_idx += 1
                 lines.append(line)
             if self.args.part_size < len(lines):
                 print("Save part:", num_part, "Saved:", len(lines))
@@ -125,7 +174,7 @@ class LossCalculator:
 
 
 def main():
-    parser = HfArgumentParser((Args, ))
+    parser = HfArgumentParser((Args,))
     args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
 
     loss_calc = LossCalculator(args)

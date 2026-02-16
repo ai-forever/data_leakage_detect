@@ -78,8 +78,8 @@ D. 8
 ### Train
 Whole pipeline contains the following steps:
 1. SFT-Lora MLLM finetuning (if need)
-2. Neighbor generation 
-3. Embedding generation 
+2. Neighbor generation
+3. **Embedding generation** – unified text + optional modality via `fimmia.embedding_models` (BaseEmbedder; default text: SentenceTransformer, default modality: ImageBind). When a modality column is used, both models are loaded before processing.
 4. Loss computation
 5. Attack model training
 #### SFT-Lora MLLM finetuning
@@ -128,17 +128,35 @@ Here
 * `model_path` - embedder model for masking neighbors generation
 * `dataset_path` - path to dataset for generating neighbors
 * `max_text_len` - max of text length in number of characters
-#### Embedding generation
+#### Embedding generation (text + optional modality)
+Embeddings are produced by a unified pipeline in `fimmia.embeds_joint`, which uses the **embedding_models** abstraction (`fimmia.embedding_models`): a **BaseEmbedder** interface for both text and modality. The default text embedder is SentenceTransformer (e.g. E5); the default modality embedder is ImageBind. When `--modality_key` is set, both the text and modality models are loaded **before** dataset processing starts.
+
 ```bash
-python job_launcher.py --script="fimmia.embeds_text_calc" \
-  --embed_model="intfloat/e5-mistral-7b-instruct" \
+python job_launcher.py --script="fimmia.embeds_joint" \
   --df_path="path/to/train.csv" \
-  --part_size=5000
+  --embed_model="intfloat/e5-mistral-7b-instruct" \
+  --max_seq_length=4096 \
+  --user_answer=0 \
+  --modality_key=video \
+  --device="cuda" \
+  --part_size=5000 \
+  --run_single_file=1
 ```
-Here
-* `embed_model` - embedder path
-* `df_path` - path to dataset for generating embeddings
-* `part_size` - lines for split dataframe into smaller frames
+
+For **text-only** datasets, omit `--modality_key`. For **multimodal** data, set `--modality_key=image`, `--modality_key=video`, or `--modality_key=audio` to compute modality embeddings (ImageBind) in the same pass; the modality model is loaded once at startup.
+
+Arguments:
+* `df_path` – path to dataset CSV (must contain `neighbors` from the neighbor step)
+* `embed_model` – text embedder model name or path (default: `intfloat/e5-mistral-7b-instruct`)
+* `max_seq_length` – max sequence length for the text encoder (default: 4096)
+* `user_answer` – if 1, neighbor text is `input + neighbor`; if 0, `neighbor + answer` (default: 0)
+* `modality_key` – optional; column name for modality (`image` / `video` / `audio`) to embed in the same pass; omit for text-only
+* `device` – device for text and modality models (default: `cuda`)
+* `part_size` – lines per output part file (default: 5000)
+* `run_single_file` – 1 to process only `df_path`; 0 to process all CSVs under `{df_path stem}_ng_parts/` (default: 1)
+
+**Text-only vs multimodal:** If you omit `--modality_key`, the pipeline produces only text embeddings (no `{modality}_embeds/` folder). The FiMMIA attack model is then trained on **reduced input**: loss + text embedding only (no modality branch). Use the **BaseLine** model family (e.g. `FiMMIABaseLineModelLossNormSTDV2`). When you set `--modality_key`, both text and modality embeddings are produced; use the **ModalityAll** model family (e.g. `FiMMIAModalityAllModelLossNormSTDV2`) so the model receives loss + text embedding + modality embedding. The MDS dataset step and data collator handle both cases; modality-related arguments (e.g. `modality_embedding_size`) apply only when using ModalityAll models.
+
 #### Loss computation
 ##### Image
 ```bash
@@ -198,7 +216,9 @@ After data preparation run training of an attack model neural network FiMMIA:
 python job_launcher.py --script="fimmia.train" \
   --train_dataset_path="train/mds/path" \
   --val_dataset_path="test/mds/path" \
-  --model_name="FiMMIABaseLineModelLossNormSTDV2" \
+  --model_name="FiMMIAModalityAllModelLossNormSTDV2" \
+  --embedding_size=4096 \
+  --modality_embedding_size=1024 \
   --output_dir="path/to/model/save" \
   --num_train_epochs=10 \
   --optim="adafactor" \
@@ -211,7 +231,9 @@ python job_launcher.py --script="fimmia.train" \
 Here
 * `train_dataset_path` - path to train mds dataset
 * `val_dataset_path` - path to test mds dataset
-* `model_name` - name FiMMIA neural network architecture
+* `model_name` - FiMMIA architecture: use `FiMMIABaseLineModelLossNormSTDV2` for text-only (no modality); use `FiMMIAModalityAllModelLossNormSTDV2` when the MDS dataset includes modality embeddings
+* `embedding_size` - text embedding dimension (default: 4096)
+* `modality_embedding_size` - modality embedding dimension for ModalityAll models (default: 1024)
 * `num_train_epochs` - number of training epochs
 * `output_dir` - path to save FiMMIA model
 * `optim` - pytorch optimizer name
@@ -254,7 +276,7 @@ python job_launcher.py --script="fimmia.attribute_fimmia" \
   --model_dir="path/to/fimmia_model_folder" \
   --mds_dataset_path="path/to/mds_dataset_folder" \
   --model_cls="BaseLineModelV2" \
-  --embedding_size=1024 \
+  --embedding_size=4096 \
   --modality_embedding_size=1024 \
   --add_attribution_noise=False \
   --create_graphs=True

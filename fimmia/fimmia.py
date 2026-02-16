@@ -16,7 +16,7 @@ class ModelArguments:
     model_name: str = "BaseLineModel"
     embedding_size: int = 4096
     projection_size: int = 512
-    image_embedding_size: int = 1024
+    modality_embedding_size: int = 1024
     model_path: str = None
     sigmas_path: str = None
     sigmas_type: str = None
@@ -50,7 +50,7 @@ class FiMMIABatchDataset(Dataset):
             line = {
                 "label": row.label,
                 "loss_input": input_loss - row.neighbor_loss,
-                "embedding_input": input_embeds - neighbor_embeds
+                "embedding_input": input_embeds - neighbor_embeds,
             }
             examples.append(line)
         return cls(examples)
@@ -101,10 +101,10 @@ class FiMMIA:
         for method, scores in scores.items():
             auroc, fpr95, tpr05 = self.calc_metrics(scores, labels)
 
-            results['method'].append(method)
-            results['auroc'].append(f"{auroc:.1%}")
-            results['fpr95'].append(f"{fpr95:.1%}")
-            results['tpr05'].append(f"{tpr05:.1%}")
+            results["method"].append(method)
+            results["auroc"].append(f"{auroc:.1%}")
+            results["fpr95"].append(f"{fpr95:.1%}")
+            results["tpr05"].append(f"{tpr05:.1%}")
 
         return results
 
@@ -113,15 +113,11 @@ class FiMMIA:
         return self._get_metrics(scores, labels)
 
     def predict(
-            self, model_args: ModelArguments,
-            df_path: str,
-            training_args: TrainingArguments
+        self, model_args: ModelArguments, df_path: str, training_args: TrainingArguments
     ):
         model = init_model(model_args)
         processor = Trainer(
-            model=model,
-            args=training_args,
-            data_collator=default_data_collator
+            model=model, args=training_args, data_collator=default_data_collator
         )
         data = self.load_data(df_path)
         scores = self.get_scores(processor, data)

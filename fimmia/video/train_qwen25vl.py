@@ -6,6 +6,7 @@ import os
 from trl import SFTConfig, SFTTrainer
 from transformers import AutoModelForVision2Seq, AutoProcessor, HfArgumentParser
 from peft import LoraConfig, get_peft_model
+
 os.environ["FORCE_QWENVL_VIDEO_READER"] = "torchvision"
 from fimmia.video.vision_process import process_vision_info
 import pandas as pd
@@ -43,13 +44,13 @@ class SFTDataset(Dataset):
         if self.modality == "video":
             modality_input["resized_height"] = 256
             modality_input["resized_width"] = 256
-        sample = [{
-            'content': [{"type": "text", "text": row["input"]}, modality_input],
-            "role": "user"
-        }, {
-            'content': [{"type": "text", "text": row["answer"]}],
-            'role': 'assistant'
-        }]
+        sample = [
+            {
+                "content": [{"type": "text", "text": row["input"]}, modality_input],
+                "role": "user",
+            },
+            {"content": [{"type": "text", "text": row["answer"]}], "role": "assistant"},
+        ]
         return sample
 
     def load_modality_input(self, conversation):
@@ -65,20 +66,28 @@ class SFTDataset(Dataset):
                         for ele in message["content"]:
                             if ele["type"] == "audio":
                                 with open(ele["audio"], "rb") as file:
-                                    audio = librosa.load(BytesIO(file.read()),
-                                                         sr=self.processor.feature_extractor.sampling_rate)[0]
+                                    audio = librosa.load(
+                                        BytesIO(file.read()),
+                                        sr=self.processor.feature_extractor.sampling_rate,
+                                    )[0]
                                 res.append(audio)
         else:
-            raise NotImplemented(f"No {self.modality }")
+            raise NotImplementedError(f"No {self.modality}")
         return res
 
     def create_data_collator(self):
         def data_collator(features):
             modality_inputs = []
             conversation = list(map(self.format_sample, features))
-            text = self.processor.apply_chat_template(conversation, add_generation_prompt=False, tokenize=False)
-            modality_inputs = {f"{self.modality}s": self.load_modality_input(conversation)}
-            inputs = self.processor(text=text, **modality_inputs, return_tensors="pt", padding=True).to("cuda")
+            text = self.processor.apply_chat_template(
+                conversation, add_generation_prompt=False, tokenize=False
+            )
+            modality_inputs = {
+                f"{self.modality}s": self.load_modality_input(conversation)
+            }
+            inputs = self.processor(
+                text=text, **modality_inputs, return_tensors="pt", padding=True
+            ).to("cuda")
             labels: torch.Tensor = inputs["input_ids"].clone()
             eos_token_id = getattr(self.processor, f"{self.modality}_token_id")
             for idx in range(len(labels)):
@@ -89,15 +98,22 @@ class SFTDataset(Dataset):
             # print(inputs)
             inputs["labels"] = labels
             return inputs
+
         return data_collator
 
 
 def main():
     parser = HfArgumentParser((Args,))
     args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
-    train_ds = SFTDataset(data=args.train_df_path, modality="video", model_id=args.model_id)
-    test_ds = SFTDataset(data=args.test_df_path, modality="video", model_id=args.model_id)
-    model = AutoModelForVision2Seq.from_pretrained(args.model_id, device_map="auto", dtype=torch.bfloat16)
+    train_ds = SFTDataset(
+        data=args.train_df_path, modality="video", model_id=args.model_id
+    )
+    test_ds = SFTDataset(
+        data=args.test_df_path, modality="video", model_id=args.model_id
+    )
+    model = AutoModelForVision2Seq.from_pretrained(
+        args.model_id, device_map="auto", dtype=torch.bfloat16
+    )
     peft_config = LoraConfig(
         lora_alpha=16,
         lora_dropout=0.05,
@@ -139,7 +155,7 @@ def main():
         data_seed=1234,
         max_length=None,
         dataset_kwargs={"skip_prepare_dataset": True},
-        dataloader_pin_memory=False
+        dataloader_pin_memory=False,
     )
     data_collator = train_ds.create_data_collator()
     trainer = SFTTrainer(

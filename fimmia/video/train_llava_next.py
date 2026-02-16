@@ -10,13 +10,13 @@ import av
 
 
 def read_video_pyav(video_path):
-    '''
+    """
     Decode the video with PyAV decoder.
     Args:
         video_path: str
     Returns:
         result (np.ndarray): np array of decoded frames of shape (num_frames, height, width, 3).
-    '''
+    """
     container = av.open(video_path)
 
     # sample uniformly 8 frames from the video, can sample more for longer videos
@@ -80,22 +80,26 @@ class SFTDataset(Dataset):
             modality_input["resized_width"] = 256
         text = row["input"]
         text = text.replace("<video>", " ")
-        sample = [{
-            'content': [{"type": "text", "text": text}, modality_input],
-            "role": "user"
-        }, {
-            'content': [{"type": "text", "text": row["answer"]}],
-            'role': 'assistant'
-        }]
+        sample = [
+            {
+                "content": [{"type": "text", "text": text}, modality_input],
+                "role": "user",
+            },
+            {"content": [{"type": "text", "text": row["answer"]}], "role": "assistant"},
+        ]
         return sample
 
     def create_data_collator(self):
         def data_collator(features):
             modality_inputs = []
             conversation = list(map(self.format_sample, features))
-            text = self.processor.apply_chat_template(conversation, add_generation_prompt=False, tokenize=False)
+            text = self.processor.apply_chat_template(
+                conversation, add_generation_prompt=False, tokenize=False
+            )
             modality_inputs = {f"{self.modality}s": get_videos(conversation)}
-            inputs = self.processor(text=text, **modality_inputs, return_tensors="pt", padding=True).to("cuda")
+            inputs = self.processor(
+                text=text, **modality_inputs, return_tensors="pt", padding=True
+            ).to("cuda")
             labels: torch.Tensor = inputs["input_ids"].clone()
             eos_token_id = getattr(self.processor, f"{self.modality}_token_id")
             for idx in range(len(labels)):
@@ -110,15 +114,22 @@ class SFTDataset(Dataset):
             inputs["input_ids"] = inputs["input_ids"][:, -max_length:]
             inputs["attention_mask"] = inputs["attention_mask"][:, -max_length:]
             return inputs
+
         return data_collator
 
 
 def main():
     parser = HfArgumentParser((Args,))
     args, _ = parser.parse_args_into_dataclasses(return_remaining_strings=True)
-    train_ds = SFTDataset(data=args.train_df_path, modality="video", model_id=args.model_id)
-    test_ds = SFTDataset(data=args.test_df_path, modality="video", model_id=args.model_id)
-    model = AutoModelForVision2Seq.from_pretrained(args.model_id, device_map="auto", dtype=torch.bfloat16)
+    train_ds = SFTDataset(
+        data=args.train_df_path, modality="video", model_id=args.model_id
+    )
+    test_ds = SFTDataset(
+        data=args.test_df_path, modality="video", model_id=args.model_id
+    )
+    model = AutoModelForVision2Seq.from_pretrained(
+        args.model_id, device_map="auto", dtype=torch.bfloat16
+    )
     peft_config = LoraConfig(
         lora_alpha=16,
         lora_dropout=0.05,
@@ -160,7 +171,7 @@ def main():
         data_seed=1234,
         max_length=None,
         dataset_kwargs={"skip_prepare_dataset": True},
-        dataloader_pin_memory=False
+        dataloader_pin_memory=False,
     )
     data_collator = train_ds.create_data_collator()
     trainer = SFTTrainer(
