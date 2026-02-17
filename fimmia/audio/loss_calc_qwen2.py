@@ -16,6 +16,9 @@ class Args:
     part_size: int = 5000
     label: int = 0
     user_answer: int = 0
+    # If 1, ignore modality_neighbors column (if present) and always use the
+    # original modality path for all neighbors.
+    ignore_modality_neighbors: int = 0
 
 
 def create_data_collator(self: SFTDataset):
@@ -71,7 +74,11 @@ class LossCalculator:
         """Return list of (neighbor_text, modality_path) for this row."""
         neighbors = eval(row["neighbors"])
         mod_list = None
-        if "modality_neighbors" in row and pd.notna(row.get("modality_neighbors")):
+        if (
+            not self.args.ignore_modality_neighbors
+            and "modality_neighbors" in row
+            and pd.notna(row.get("modality_neighbors"))
+        ):
             try:
                 mod_list = (
                     eval(row["modality_neighbors"])

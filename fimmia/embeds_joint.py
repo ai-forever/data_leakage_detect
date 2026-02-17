@@ -33,6 +33,10 @@ class Args:
     user_answer: int = 0
     # Modality (optional; when absent, only text embeds are produced)
     modality_key: Optional[str] = None  # e.g. "image", "video", "audio"
+    # If 1, explicitly ignore any modality neighbor information and always use the
+    # original modality input for all neighbors. Currently kept for API symmetry
+    # with the loss calculators; embeds_joint does not use modality_neighbors.
+    ignore_modality_neighbors: int = 0
     device: str = "cuda"
     # Output
     part_size: int = 5000
@@ -48,6 +52,7 @@ def prc_df(
     device: str,
     save_dir: Optional[str] = None,
     modality_embedder: Optional[BaseEmbedder] = None,
+    ignore_modality_neighbors: int = 0,
 ) -> List[str]:
     """
     Single pass: for each (row, neighbor) compute text and optional modality
@@ -84,14 +89,50 @@ def prc_df(
 
         row_input = row.input + " " + row.answer
         input_embeds = text_embedder.embed_text(row_input)
+
+        # Prepare modality information for this row: we always embed the original
+        # modality input once for the "input_*_embeds" column, and for neighbors
+        # we either:
+        #   * use per-neighbor modality paths from `modality_neighbors` when
+        #     available and ignore_modality_neighbors == 0, or
+        #   * fall back to the original modality path for all neighbors.
         if has_modality and modality_embedder is not None:
-            mod_path = row[modality_key]
+            base_mod_path = row[modality_key]
             input_mod_embeds = modality_embedder.embed_modality_batch(
-                modality_key, [mod_path]
+                modality_key, [base_mod_path]
             )[0]
+
+            mod_list = None
+            if (
+                not ignore_modality_neighbors
+                and "modality_neighbors" in row
+                and pd.notna(row.get("modality_neighbors"))
+            ):
+                try:
+                    raw_mod_list = (
+                        eval(row["modality_neighbors"])
+                        if isinstance(row["modality_neighbors"], str)
+                        else row["modality_neighbors"]
+                    )
+                    if isinstance(raw_mod_list, list) and len(raw_mod_list) == len(
+                        neighbors
+                    ):
+                        mod_list = raw_mod_list
+                except Exception:
+                    mod_list = None
+
+            if mod_list is not None:
+                neighbor_specs = [(n, mod_list[i]) for i, n in enumerate(neighbors)]
+            else:
+                neighbor_specs = [(n, base_mod_path) for n in set(neighbors)]
+        else:
+            base_mod_path = None
+            input_mod_embeds = None
+            neighbor_specs = [(n, None) for n in set(neighbors)]
+
         is_add = True
 
-        for neighbor in set(neighbors):
+        for neighbor, neighbor_mod_path in neighbor_specs:
             line = deepcopy(new_row)
             line["neighbor"] = neighbor
             if user_answer:
@@ -109,7 +150,7 @@ def prc_df(
 
             if has_modality and modality_embedder is not None:
                 neighbor_mod_embeds = modality_embedder.embed_modality_batch(
-                    modality_key, [mod_path]
+                    modality_key, [neighbor_mod_path]
                 )[0]
                 line_mod = {
                     f"neighbor_{modality_key}_embeds": neighbor_mod_embeds,
@@ -170,6 +211,7 @@ def main():
             modality_key=args.modality_key,
             device=args.device,
             modality_embedder=modality_embedder,
+            ignore_modality_neighbors=args.ignore_modality_neighbors,
         )
         res.extend(processed_paths)
     else:
@@ -182,6 +224,7 @@ def main():
                 modality_key=args.modality_key,
                 device=args.device,
                 modality_embedder=modality_embedder,
+                ignore_modality_neighbors=args.ignore_modality_neighbors,
             )
             res.extend(processed_paths)
 
