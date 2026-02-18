@@ -7,7 +7,7 @@ from transformers import (
 from tqdm import tqdm
 from dataclasses import dataclass
 from copy import deepcopy
-import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
@@ -239,10 +239,8 @@ class NeighborsGenerator:
         if use_modality:
             output_dir = self.args.modality_output_dir
             if output_dir is None:
-                output_dir = os.path.join(
-                    os.path.dirname(dataset_path), "modality_neighbors"
-                )
-            os.makedirs(output_dir, exist_ok=True)
+                output_dir = Path(dataset_path).parent / "modality_neighbors"
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
         else:
             output_dir = None
 

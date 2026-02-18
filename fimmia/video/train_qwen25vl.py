@@ -4,7 +4,7 @@ from io import BytesIO
 import librosa
 import os
 from trl import SFTConfig, SFTTrainer
-from transformers import AutoModelForVision2Seq, AutoProcessor, HfArgumentParser
+from transformers import AutoModelForImageTextToText, AutoProcessor, HfArgumentParser
 from peft import LoraConfig, get_peft_model
 
 os.environ["FORCE_QWENVL_VIDEO_READER"] = "torchvision"
@@ -111,7 +111,7 @@ def main():
     test_ds = SFTDataset(
         data=args.test_df_path, modality="video", model_id=args.model_id
     )
-    model = AutoModelForVision2Seq.from_pretrained(
+    model = AutoModelForImageTextToText.from_pretrained(
         args.model_id, device_map="auto", dtype=torch.bfloat16
     )
     peft_config = LoraConfig(

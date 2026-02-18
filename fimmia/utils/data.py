@@ -6,17 +6,17 @@ from fimmia.utils.utils import load_json
 from collections import defaultdict
 from sklearn.preprocessing import StandardScaler
 from transformers import default_data_collator
+from pathlib import Path
 import numpy as np
 import pandas as pd
-import os
 
 
 def merge_part(embeds_dir, image_embeds_dir, loss_dir, num_part, model_name, label=0):
-    df_embeds = pd.read_csv(os.path.join(embeds_dir, f"part_{num_part}.csv"))
+    df_embeds = pd.read_csv(str(Path(embeds_dir) / f"part_{num_part}.csv"))
     df_image_embeds = pd.read_csv(
-        os.path.join(image_embeds_dir, f"part_{num_part}.csv")
+        str(Path(image_embeds_dir) / f"part_{num_part}.csv")
     )
-    df_loss = pd.read_csv(os.path.join(loss_dir, f"part_{num_part}.csv"))
+    df_loss = pd.read_csv(str(Path(loss_dir) / f"part_{num_part}.csv"))
     assert len(df_loss) == len(df_image_embeds) == len(df_embeds)
     df_loss["label"] = label
     df_loss["neighbor_embeds"] = df_embeds.neighbor_embeds
@@ -33,10 +33,11 @@ def merge_part(embeds_dir, image_embeds_dir, loss_dir, num_part, model_name, lab
 
 
 def iterate_df_parts(path, model_name, label):
-    embeds_dir = os.path.join(path[:-4], "embeds")
-    image_embeds_dir = os.path.join(path[:-4], "image_embeds")
-    loss_dir = os.path.join(path[:-4], f"loss/{model_name}")
-    num_parts = len(glob(f"{embeds_dir}/*.csv"))
+    working_dir = Path(path).with_suffix("")
+    embeds_dir = working_dir / "embeds"
+    image_embeds_dir = working_dir / "image_embeds"
+    loss_dir = working_dir / "loss" / model_name
+    num_parts = len(list(embeds_dir.glob("*.csv")))
     for num_part in tqdm(range(num_parts), total=num_parts, desc=f"prc df {path}"):
         part = merge_part(
             embeds_dir, image_embeds_dir, loss_dir, num_part, model_name, label=label
@@ -120,12 +121,13 @@ def build_mds(
     }
     if sigmas is None:
         sigmas = {}
-    ds_name = os.path.split(origin_ds_path)[-1][:-4]
-    ds_dir = os.path.split(origin_ds_path)[0]
+    origin_path = Path(origin_ds_path)
+    ds_name = origin_path.stem
+    ds_dir = origin_path.parent
     if single_file:
         ds_file_paths = [origin_ds_path]
     else:
-        ds_file_paths = glob(os.path.join(ds_dir, f"{ds_name}_ng_parts/*.csv"))
+        ds_file_paths = list(ds_dir.glob(f"{ds_name}_ng_parts/*.csv"))
     with MDSWriter(out=save_dir, columns=columns, exist_ok=True) as ds_writer:
         for df_path in tqdm(ds_file_paths, total=len(ds_file_paths)):
             for model_name, label in zip(model_names, labels):

@@ -1,5 +1,5 @@
 import importlib
-import os
+from pathlib import Path
 
 
 _MODELS = dict()
@@ -8,15 +8,16 @@ _MODELS = dict()
 def register_all(services_dir):
     # import any Python files in the services_dir directory
     # DO NOT MOVE THIS FUNCTION TO OTHER DIRECTORY
-    branches = []
-    for branch in os.walk(services_dir):
-        branches.append(branch)
+    services_path = Path(services_dir)
     files = []
-    for address, _, dir_files in branches:
-        for file in dir_files:
-            files.append(os.path.join(address, file))
+    for file_path in services_path.rglob("*.py"):
+        if (
+            not file_path.name.startswith("_")
+            and not file_path.name.startswith(".")
+        ):
+            files.append(file_path)
     for path in files:
-        path, file = os.path.split(path)
+        file = path.name
         if (
             not file.startswith("_")
             and not file.startswith(".")
@@ -35,7 +36,7 @@ def register_model(cls):
 
 
 def rel_dir(file):
-    return os.path.split(file)[0]
+    return str(Path(file).parent)
 
 
 def get_all_models():

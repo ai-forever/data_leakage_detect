@@ -1,6 +1,6 @@
 from fimmia.fimmia_models.registry import register_all, rel_dir, get_all_models
 from safetensors.torch import load_file
-import os
+from pathlib import Path
 
 
 register_all(rel_dir(__file__))
@@ -11,7 +11,7 @@ def init_model(model_args):
     model = model_cls(model_args)
     if model_args.model_path is not None:
         model.load_state_dict(
-            load_file(os.path.join(model_args.model_path, "model.safetensors"))
+            load_file(str(Path(model_args.model_path) / "model.safetensors"))
         )
     return model.cuda()
 

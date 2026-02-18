@@ -7,7 +7,7 @@ Perturbations are adversarial-style (rotation, distortion, smoothing, silence se
 rather than optimization-based attacks.
 """
 
-import os
+from pathlib import Path
 import shutil
 from typing import List
 
@@ -228,12 +228,14 @@ def get_modality_neighbors(
     path = str(path).strip()
     if not path:
         raise RuntimeError(f"Empty modality path for perturbation at row {row_index}")
-    if not os.path.isfile(path):
+    path_obj = Path(path)
+    if not path_obj.is_file():
         raise RuntimeError(
             f"Modality path does not exist or is not a file: '{path}' (row {row_index})"
         )
-    os.makedirs(output_dir, exist_ok=True)
-    base, ext = os.path.splitext(os.path.basename(path))
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    base = path_obj.stem
+    ext = path_obj.suffix
     if not ext:
         ext = ".bin"
     modality_type = modality_type.lower()
@@ -247,7 +249,7 @@ def get_modality_neighbors(
     out_paths: List[str] = []
     for k in range(num_neighbors):
         out_name = f"{base}_row{row_index}_n{k}{ext}"
-        out_path = os.path.join(output_dir, out_name)
+        out_path = Path(output_dir) / out_name
         # Let any errors surface so the user can see what went wrong.
         perturb_fn(path, out_path, seed=hash((path, row_index, k)) % (2**32))
         out_paths.append(out_path)

@@ -1,4 +1,4 @@
-import os.path
+from pathlib import Path
 from dataclasses import dataclass, asdict
 from transformers import TrainingArguments, Trainer, HfArgumentParser
 from fimmia.fimmia_models import init_model
@@ -75,14 +75,14 @@ def train(
     )
     try:
         trainer.train()
-        save_path = os.path.join(training_args.output_dir, "test.csv")
-        save_metrics_path = os.path.join(training_args.output_dir, "test_metrics.csv")
+        save_path = Path(training_args.output_dir) / "test.csv"
+        save_metrics_path = Path(training_args.output_dir) / "test_metrics.csv"
         # save model
         trainer.save_model()
         df_pred = get_df_with_predictions(val_ds, trainer)
-        df_pred.to_csv(save_path, index=False)
+        df_pred.to_csv(str(save_path), index=False)
         m = get_metrics_from_df(df_pred)
-        m.to_csv(save_metrics_path, index=False)
+        m.to_csv(str(save_metrics_path), index=False)
     except KeyboardInterrupt:
         print("Stop training...")
     return trainer

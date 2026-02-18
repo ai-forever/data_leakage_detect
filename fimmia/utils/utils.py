@@ -1,6 +1,6 @@
 import torch
 import gc
-import os
+from pathlib import Path
 import random
 import numpy as np
 import pickle
@@ -54,10 +54,10 @@ def empty_cache(*args):
 
 def get_files_from_dir(dir_path):
     f = []
-    for dir_path, dirn_ames, filenames in os.walk(dir_path):
-        for fn in filenames:
-            fn = os.path.join(dir_path, fn)
-            f.append(fn)
+    dir_path_obj = Path(dir_path)
+    for file_path in dir_path_obj.rglob("*"):
+        if file_path.is_file():
+            f.append(str(file_path))
     return f
 
 

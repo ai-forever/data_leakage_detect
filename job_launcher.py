@@ -2,10 +2,10 @@
 import importlib
 import argparse
 import sys
-import os
+from pathlib import Path
 
 
-sys.path.append(os.path.split(__file__)[0])
+sys.path.append(str(Path(__file__).parent))
 
 
 def parse_args():

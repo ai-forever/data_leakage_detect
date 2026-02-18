@@ -1,7 +1,7 @@
 from tqdm import tqdm
 from copy import deepcopy
 from dataclasses import dataclass
-import os
+from pathlib import Path
 import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, HfArgumentParser
@@ -26,7 +26,7 @@ class LossCalculator:
         self.args: Args = args
         self.model = None
         self.tokenizer = None
-        self.model_name = os.path.split(self.args.model_name)[-1]
+        self.model_name = Path(self.args.model_name).name
         self.max_seq_length = 2048
         self.system_prompt = "You are a helpful assistant."
 
@@ -74,13 +74,13 @@ class LossCalculator:
         return [(n, mod_path) for n in set(neighbors)]
 
     def prc_df(self):
-        save_dir = os.path.join(
-            self.args.df_path[:-4],
-            "loss",
-            self.model_name,
-            "leak" if self.args.label else "no_leak",
+        save_dir = (
+            Path(self.args.df_path).with_suffix("")
+            / "loss"
+            / self.model_name
+            / ("leak" if self.args.label else "no_leak")
         )
-        os.makedirs(save_dir, exist_ok=True)
+        save_dir.mkdir(parents=True, exist_ok=True)
         df = pd.read_csv(self.args.df_path)
         input_ds = []
         neighbor_ds = []
@@ -128,16 +128,16 @@ class LossCalculator:
                 lines.append(line)
             if self.args.part_size < len(lines):
                 print("Save part:", num_part, "Saved:", len(lines))
-                fp = os.path.join(save_dir, f"part_{num_part}.csv")
-                pd.DataFrame(lines).to_csv(fp, index=False)
-                res.append(fp)
+                fp = save_dir / f"part_{num_part}.csv"
+                pd.DataFrame(lines).to_csv(str(fp), index=False)
+                res.append(str(fp))
                 num_part += 1
                 lines = []
         if len(lines):
             print("Save part:", num_part, "Saved:", len(lines))
-            fp = os.path.join(save_dir, f"part_{num_part}.csv")
-            pd.DataFrame(lines).to_csv(fp, index=False)
-            res.append(fp)
+            fp = save_dir / f"part_{num_part}.csv"
+            pd.DataFrame(lines).to_csv(str(fp), index=False)
+            res.append(str(fp))
         return res
 
     def get_losses(self, ds):

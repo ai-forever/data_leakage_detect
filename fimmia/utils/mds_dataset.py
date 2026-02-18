@@ -5,7 +5,7 @@ from tqdm import tqdm
 from dataclasses import dataclass
 from transformers import HfArgumentParser
 from fimmia.utils.utils import load_json
-import os
+from pathlib import Path
 import pandas as pd
 import numpy as np
 
@@ -81,13 +81,11 @@ class MDSDataset:
         self.stream = get_streaming_ds(self.mds_dataset_paths, shuffle=False)
 
     def iterate_df_parts(self, df_path, label):
-        working_dir = df_path[:-4]
-        embeds_dir = os.path.join(working_dir, "embeds")
-        modality_embeds_dir = os.path.join(working_dir, f"{self.modality_key}_embeds")
-        loss_dir = os.path.join(
-            working_dir, "loss", self.model_name, "leak" if label else "no_leak"
-        )
-        num_parts = len(glob(f"{embeds_dir}/*.csv"))
+        working_dir = Path(df_path).with_suffix("")
+        embeds_dir = working_dir / "embeds"
+        modality_embeds_dir = working_dir / f"{self.modality_key}_embeds"
+        loss_dir = working_dir / "loss" / self.model_name / ("leak" if label else "no_leak")
+        num_parts = len(list(embeds_dir.glob("*.csv")))
         for num_part in tqdm(
             range(num_parts), total=num_parts, desc=f"prc df {df_path}"
         ):
@@ -96,9 +94,9 @@ class MDSDataset:
             )
 
     def merge_part(self, embeds_dir, modality_embeds_dir, loss_dir, num_part, label):
-        df_embeds = pd.read_csv(os.path.join(embeds_dir, f"part_{num_part}.csv"))
+        df_embeds = pd.read_csv(str(embeds_dir / f"part_{num_part}.csv"))
 
-        df_loss = pd.read_csv(os.path.join(loss_dir, f"part_{num_part}.csv"))
+        df_loss = pd.read_csv(str(loss_dir / f"part_{num_part}.csv"))
         df_loss["label"] = label
         df_loss["neighbor_embeds"] = df_embeds.neighbor_embeds
         df_loss["input_embeds"] = df_embeds.input_embeds
@@ -113,11 +111,11 @@ class MDSDataset:
         ]
         df_loss["num_part"] = num_part
 
-        modality_embeds_path = os.path.join(modality_embeds_dir, f"part_{num_part}.csv")
-        if self.modality_exists or os.path.exists(modality_embeds_path):
+        modality_embeds_path = modality_embeds_dir / f"part_{num_part}.csv"
+        if self.modality_exists or modality_embeds_path.exists():
             self.modality_exists = True
             self.columns[f"{self.modality_key}_embedding_input"] = "ndarray"
-            df_modality_embeds = pd.read_csv(modality_embeds_path)
+            df_modality_embeds = pd.read_csv(str(modality_embeds_path))
             df_loss[self.neighbor_modality_key] = df_modality_embeds[
                 self.neighbor_modality_key
             ]
@@ -197,16 +195,13 @@ class MDSDataset:
 
     def build(self, single_file=False, sigmas=None):
         save_dir = self.mds_dataset_paths[0]
-        ds_name = os.path.split(self.origin_df_path)[-1][:-4]
+        origin_path = Path(self.origin_df_path)
+        ds_name = origin_path.stem
 
         if single_file:
             ds_file_paths = [self.origin_df_path]
         else:
-            ds_file_paths = glob(
-                os.path.join(
-                    os.path.split(self.origin_df_path)[0], f"{ds_name}_ng_parts/*.csv"
-                )
-            )
+            ds_file_paths = list(origin_path.parent.glob(f"{ds_name}_ng_parts/*.csv"))
         with MDSWriter(out=save_dir, columns=self.columns, exist_ok=True) as ds_writer:
             pbar = tqdm(ds_file_paths, total=len(ds_file_paths))
             for df_path in pbar:

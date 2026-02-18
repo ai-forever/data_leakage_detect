@@ -7,7 +7,7 @@ embeds/part_*.csv and, when a modality column is present, {modality_key}_embeds/
 so that existing MDS and training code works unchanged.
 """
 
-import os
+from pathlib import Path
 from copy import deepcopy
 from dataclasses import dataclass
 from glob import glob
@@ -60,9 +60,9 @@ def prc_df(
     {modality_key}_embeds/part_*.csv with aligned row counts.
     """
     df = pd.read_csv(df_path)
-    base_dir = df_path[:-4] if save_dir is None else save_dir
-    embeds_dir = os.path.join(base_dir, "embeds")
-    os.makedirs(embeds_dir, exist_ok=True)
+    base_dir = Path(df_path).with_suffix("") if save_dir is None else Path(save_dir)
+    embeds_dir = base_dir / "embeds"
+    embeds_dir.mkdir(parents=True, exist_ok=True)
 
     has_modality = (
         modality_key is not None
@@ -70,8 +70,8 @@ def prc_df(
         and modality_key in df.columns
     )
     if has_modality:
-        modality_embeds_dir = os.path.join(base_dir, f"{modality_key}_embeds")
-        os.makedirs(modality_embeds_dir, exist_ok=True)
+        modality_embeds_dir = base_dir / f"{modality_key}_embeds"
+        modality_embeds_dir.mkdir(parents=True, exist_ok=True)
         if modality_embedder is None:
             modality_embedder = get_default_modality_embedder(device=device)
     else:
@@ -162,24 +162,24 @@ def prc_df(
 
         if part_size < len(lines_text):
             print("Save part:", num_part, "Saved:", len(lines_text))
-            fp = os.path.join(embeds_dir, f"part_{num_part}.csv")
-            pd.DataFrame(lines_text).to_csv(fp, index=False)
-            res.append(fp)
+            fp = embeds_dir / f"part_{num_part}.csv"
+            pd.DataFrame(lines_text).to_csv(str(fp), index=False)
+            res.append(str(fp))
             if has_modality:
-                fp_mod = os.path.join(modality_embeds_dir, f"part_{num_part}.csv")
-                pd.DataFrame(lines_modality).to_csv(fp_mod, index=False)
+                fp_mod = modality_embeds_dir / f"part_{num_part}.csv"
+                pd.DataFrame(lines_modality).to_csv(str(fp_mod), index=False)
             num_part += 1
             lines_text = []
             lines_modality = []
 
     if len(lines_text):
         print("Save part:", num_part, "Saved:", len(lines_text))
-        fp = os.path.join(embeds_dir, f"part_{num_part}.csv")
-        pd.DataFrame(lines_text).to_csv(fp, index=False)
-        res.append(fp)
+        fp = embeds_dir / f"part_{num_part}.csv"
+        pd.DataFrame(lines_text).to_csv(str(fp), index=False)
+        res.append(str(fp))
         if has_modality:
-            fp_mod = os.path.join(modality_embeds_dir, f"part_{num_part}.csv")
-            pd.DataFrame(lines_modality).to_csv(fp_mod, index=False)
+            fp_mod = modality_embeds_dir / f"part_{num_part}.csv"
+            pd.DataFrame(lines_modality).to_csv(str(fp_mod), index=False)
 
     return res
 
