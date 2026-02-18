@@ -1,4 +1,3 @@
-from glob import glob
 from tqdm import tqdm
 from streaming.base import MDSWriter
 from fimmia.utils.mds_dataset import get_streaming_ds
@@ -13,9 +12,7 @@ import pandas as pd
 
 def merge_part(embeds_dir, image_embeds_dir, loss_dir, num_part, model_name, label=0):
     df_embeds = pd.read_csv(str(Path(embeds_dir) / f"part_{num_part}.csv"))
-    df_image_embeds = pd.read_csv(
-        str(Path(image_embeds_dir) / f"part_{num_part}.csv")
-    )
+    df_image_embeds = pd.read_csv(str(Path(image_embeds_dir) / f"part_{num_part}.csv"))
     df_loss = pd.read_csv(str(Path(loss_dir) / f"part_{num_part}.csv"))
     assert len(df_loss) == len(df_image_embeds) == len(df_embeds)
     df_loss["label"] = label

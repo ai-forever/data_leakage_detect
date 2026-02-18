@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fimmia"
+version = "1.0.0"
+description = "FiMMIA: Framework for Multimodal Membership Inference Attacks"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Emelyanov Anton"},
+    {name = "Kudriashov Sergei"},
+    {name = "Alena Fenogenova"},
+]
+keywords = ["membership inference", "multimodal", "machine learning", "privacy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "torchvision==0.22.1",
+    "torchdata==0.9.0",
+    "mosaicml-streaming",
+    "trl",
+    "transformers==4.56.2",
+    "tqdm==4.67.1",
+    "torch==2.7.1",
+    "sentence-transformers==4.1.0",
+    "scipy==1.15.2",
+    "scikit-learn==1.7.2",
+    "pyyaml==6.0.2",
+    "python-dotenv==1.0.1",
+    "plotly==6.0.1",
+    "peft==0.17.1",
+    "pandas~=2.2.3",
+    "numpy~=2.2.2",
+    "datasets==3.2.0",
+    "accelerate~=1.3.0",
+    "decord",
+    "av",
+    "opencv-python-headless",
+    "seaborn",
+    "captum",
+    "soundfile",
+    "librosa",
+    "torchcodec",
+    "omegaconf",
+    "setuptools==81.0.0",
+    "imagebind @ git+https://github.com/facebookresearch/ImageBind.git",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+]
+
+[project.scripts]
+fimmia = "fimmia.cli:main"
+shift-attack = "shift_detection.cli:main"
+
+[tool.setuptools]
+packages = ["fimmia", "shift_detection"]
+
+[tool.setuptools.package-data]
+fimmia = ["**/*.py"]
+shift_detection = ["**/*.py"]

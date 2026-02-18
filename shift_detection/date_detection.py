@@ -1,25 +1,26 @@
 import regex as re
+import numpy as np
 from sklearn.metrics import classification_report
-from utils import *
+from shift_detection.utils import get_roc_auc, get_tpr_metric, plot_tpr_fpr_curve
 
-def date_detection_basic(X,y, dataset_name, fpr_budget, plot_roc):
-    cutoff_year=2023
-    if 'wikimia' == dataset_name:
-        cutoff_year=2023
-    if 'temporal_wiki' == dataset_name:
-        cutoff_year=2021
-    if 'temporal_arxiv' == dataset_name:
-        cutoff_year=2020
+
+def date_detection_basic(X, y, dataset_name, fpr_budget, plot_roc):
+    cutoff_year = 2023
+    if "wikimia" == dataset_name:
+        cutoff_year = 2023
+    if "temporal_wiki" == dataset_name:
+        cutoff_year = 2021
+    if "temporal_arxiv" == dataset_name:
+        cutoff_year = 2020
 
     y_true = y
-    y_pred = [0]*len(y)
-    y_pred_proba = [0]*len(y)
+    y_pred = [0] * len(y)
+    y_pred_proba = [0] * len(y)
 
-    incorrect_count = 0
     no_year_count = 0
     for index in range(len(X)):
         x = re.findall("[0-9][0-9][0-9][0-9]", X[index])
-        if len(x)>0:
+        if len(x) > 0:
             year = max([int(y) for y in x])
             if year < cutoff_year:
                 y_pred[index] = 1
@@ -27,21 +28,22 @@ def date_detection_basic(X,y, dataset_name, fpr_budget, plot_roc):
             else:
                 y_pred[index] = 0
                 y_pred_proba[index] = 0.0
-        else:             # "NO YEAR"
-            no_year_count +=1
+        else:  # "NO YEAR"
+            no_year_count += 1
             y_pred[index] = 0
             y_pred_proba[index] = 0.5
 
     print("- no of datapoints with missing years:", no_year_count)
-    print(classification_report(y_true, y_pred, target_names=['non-member', 'member']))
+    print(classification_report(y_true, y_pred, target_names=["non-member", "member"]))
 
     roc_auc = get_roc_auc(y_true, y_pred_proba)
-    print("ROC AUC: ",roc_auc)
+    print("ROC AUC: ", roc_auc)
     tpr_at_low_fpr = get_tpr_metric(y_true, y_pred_proba, fpr_budget)
-    print(f'TPR@{fpr_budget}%FPR: {tpr_at_low_fpr}')
+    print(f"TPR@{fpr_budget}%FPR: {tpr_at_low_fpr}")
 
     if plot_roc:
         plot_tpr_fpr_curve(y_true, y_pred_proba, fpr_budget)
+
 
 def is_year(s):
     if len(s) == 2:
@@ -50,6 +52,7 @@ def is_year(s):
         return 1970 <= int(s) <= 2023
     else:
         return False
+
 
 def to_year(d):
     if d <= 23:
@@ -60,25 +63,27 @@ def to_year(d):
         assert d >= 1970, d
         return d
 
+
 def max_year(s):
-    pattern = re.compile(r'(?:\\cite[p|t]?\{|(?<!^)\G),?\s*([^,}]+)+')
+    pattern = re.compile(r"(?:\\cite[p|t]?\{|(?<!^)\G),?\s*([^,}]+)+")
     matches = re.findall(pattern, s)
     # print(matches)
-    numbers = [re.findall(r'\d+', m[0]) for m in matches]
+    numbers = [re.findall(r"\d+", m[0]) for m in matches]
     numbers = [n[0] if len(n) == 1 else "9999" for n in numbers]
     numbers = [int(n) if is_year(n) else 9999 for n in numbers]
     years = [to_year(n) for n in numbers]
-    
+
     if len(years) > 0:
         return max(years)
     else:
         return 9999
 
+
 def date_detection_arxiv(X, y, members, nonmembers, dataset_name, fpr_budget, plot_roc):
-    cutoff_year=2022
+    cutoff_year = 2022
     y_true = y
-    y_pred = [0]*len(y)
-    y_pred_proba = [0]*len(y)
+    y_pred = [0] * len(y)
+    y_pred_proba = [0] * len(y)
 
     nonmember_years = []
     for m in nonmembers:
@@ -104,12 +109,10 @@ def date_detection_arxiv(X, y, members, nonmembers, dataset_name, fpr_budget, pl
         tprs.append(TPR)
         # print(f"{t}, TPR={TPR:.2f}, FPR={FPR:.2f}")
 
-    for i in range(len(tprs)-1,-1,-1):
+    for i in range(len(tprs) - 1, -1, -1):
         if fprs[i] <= fpr_budget:
-            print(f'TPR@{fpr_budget}%FPR: {tprs[i]:.2f}')
+            print(f"TPR@{fpr_budget}%FPR: {tprs[i]:.2f}")
             break
-
-
 
     for index in range(len(X)):
         citations = re.findall("cite{.+}", X[index])
@@ -118,8 +121,8 @@ def date_detection_arxiv(X, y, members, nonmembers, dataset_name, fpr_budget, pl
         for cite in citations:
             dates = dates + re.findall("[0-9][0-9][0-9][0-9]", cite)
         # print(dates)
- 
-        if len(dates)>0:
+
+        if len(dates) > 0:
             years = [int(y) for y in dates]
             year = max(years)
 
@@ -129,26 +132,17 @@ def date_detection_arxiv(X, y, members, nonmembers, dataset_name, fpr_budget, pl
             else:
                 y_pred[index] = 0
                 y_pred_proba[index] = 0.0
-        else:             # "NO YEAR"
-
+        else:  # "NO YEAR"
             y_pred[index] = 0
             y_pred_proba[index] = 0.5
 
     # print("- no of datapoints with missing years:", no_year_count)
-    print(classification_report(y_true, y_pred, target_names=['non-member', 'member']))
+    print(classification_report(y_true, y_pred, target_names=["non-member", "member"]))
 
     roc_auc = get_roc_auc(y_true, y_pred_proba)
-    print("ROC AUC: ",roc_auc)
+    print("ROC AUC: ", roc_auc)
     tpr_at_low_fpr = get_tpr_metric(y_true, y_pred_proba, fpr_budget)
-    print(f'TPR@{fpr_budget}%FPR: {tpr_at_low_fpr}')
+    print(f"TPR@{fpr_budget}%FPR: {tpr_at_low_fpr}")
 
     if plot_roc:
         plot_tpr_fpr_curve(y_true, y_pred_proba, fpr_budget)
-
-
-
-
-
-
-
-

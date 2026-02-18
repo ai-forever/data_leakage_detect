@@ -134,7 +134,9 @@ class FiMMIAModalityAllModelV2(nn.Module):
 
         loss_proj = self.loss_component(loss_input.reshape(-1, 1))
         embed_proj = self.embedding_component(embedding_input)
-        modality_embed_proj = self.modality_embedding_component(modality_embedding_input)
+        modality_embed_proj = self.modality_embedding_component(
+            modality_embedding_input
+        )
 
         proj = torch.hstack([loss_proj, embed_proj, modality_embed_proj])
         res = self.attack_encoding(proj)

@@ -11,10 +11,7 @@ def register_all(services_dir):
     services_path = Path(services_dir)
     files = []
     for file_path in services_path.rglob("*.py"):
-        if (
-            not file_path.name.startswith("_")
-            and not file_path.name.startswith(".")
-        ):
+        if not file_path.name.startswith("_") and not file_path.name.startswith("."):
             files.append(file_path)
     for path in files:
         file = path.name

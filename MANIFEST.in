@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+recursive-include docs *
+recursive-include examples *.ipynb
+recursive-include fimmia *.py
+recursive-include shift_detection *.py

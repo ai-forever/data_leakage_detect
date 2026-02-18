@@ -1,11 +1,14 @@
 import numpy as np
+
 # import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import auc
 import random
+
 # from ortools.algorithms.python import knapsack_solver
 import itertools
 from collections import defaultdict
 # from datasets import load_dataset
+
 
 # returns the set of all N-grams, for N≤n
 # e.g., if n=3 and s="ababacd", this returns
@@ -13,10 +16,11 @@ from collections import defaultdict
 def ngrams(s, n=5):
     if n == 1:
         return set(s)
-    iters = itertools.tee(s, n)                                                     
-    for i, it in enumerate(iters):                                               
-        next(itertools.islice(it, i, i), None)                                               
-    return set("".join(x) for x in zip(*iters)).union(ngrams(s, n=n-1))
+    iters = itertools.tee(s, n)
+    for i, it in enumerate(iters):
+        next(itertools.islice(it, i, i), None)
+    return set("".join(x) for x in zip(*iters)).union(ngrams(s, n=n - 1))
+
 
 # list of sentences for each ngram
 def count_unique_chars(lines, threshold=None):
@@ -25,7 +29,7 @@ def count_unique_chars(lines, threshold=None):
         unique_chars = ngrams(line)
         for char in unique_chars:
             char_counts[char].add(i)
-    
+
     if threshold is not None:
         for c in list(char_counts.keys()):
             if len(char_counts[c]) < threshold:
@@ -34,8 +38,10 @@ def count_unique_chars(lines, threshold=None):
     return char_counts
 
 
-def greedy_selection_basic(member_lines, nonmember_lines, dataset_name, fpr_budget, plot_roc):
-    
+def greedy_selection_basic(
+    member_lines, nonmember_lines, dataset_name, fpr_budget, plot_roc
+):
+
     TEST_SIZE = 0.1
     CROSS_VALS = 10
     RES = []
@@ -43,7 +49,7 @@ def greedy_selection_basic(member_lines, nonmember_lines, dataset_name, fpr_budg
 
     # member_lines = list(dataset['member'])
     # nonmember_lines = list(dataset['nonmember'])
-    N = int(TEST_SIZE*len(member_lines))
+    N = int(TEST_SIZE * len(member_lines))
     # print(N)
 
     for _ in range(CROSS_VALS):
@@ -79,10 +85,17 @@ def greedy_selection_basic(member_lines, nonmember_lines, dataset_name, fpr_budg
         best_tpr = 0
 
         while CURR_FPR < BUDGET:
-            candidates = [c for c in sorted(member_char_counts.keys()) if len(nonmember_char_counts[c]) <= BUDGET - CURR_FPR]
+            candidates = [
+                c
+                for c in sorted(member_char_counts.keys())
+                if len(nonmember_char_counts[c]) <= BUDGET - CURR_FPR
+            ]
             if len(candidates) == 0:
                 break
-            ratios = [(len(member_char_counts[c]) + 0) / (len(nonmember_char_counts[c])+1) for c in candidates]
+            ratios = [
+                (len(member_char_counts[c]) + 0) / (len(nonmember_char_counts[c]) + 1)
+                for c in candidates
+            ]
             best_idx = np.argmax(ratios)
             chosen_c = candidates[best_idx]
             sol_chars.append(chosen_c)
@@ -90,8 +103,8 @@ def greedy_selection_basic(member_lines, nonmember_lines, dataset_name, fpr_budg
             CURR_TPR += len(member_char_counts[chosen_c])
             CURR_FPR += len(nonmember_char_counts[chosen_c])
 
-            #print("TPR", sorted(list(member_char_counts[chosen_c])))
-            #print("FPR", sorted(list(nonmember_char_counts[chosen_c])))
+            # print("TPR", sorted(list(member_char_counts[chosen_c])))
+            # print("FPR", sorted(list(nonmember_char_counts[chosen_c])))
 
             temp = member_char_counts[chosen_c].copy()
             for c in list(member_char_counts.keys()):
@@ -120,21 +133,52 @@ def greedy_selection_basic(member_lines, nonmember_lines, dataset_name, fpr_budg
                 if len(nonmember_char_counts_test[c]) == 0:
                     del nonmember_char_counts_test[c]
 
-            #print(chosen_c, 
-            #      100 * CURR_TPR / len(member_sample), 
-            #      100 * CURR_FPR / len(nonmember_sample), 
-            #      100 * CURR_TPR_TEST / len(member_test), 
+            # print(chosen_c,
+            #      100 * CURR_TPR / len(member_sample),
+            #      100 * CURR_FPR / len(nonmember_sample),
+            #      100 * CURR_TPR_TEST / len(member_test),
             #      100 * CURR_FPR_TEST / len(nonmember_test))
 
-            m = [i for i,s in enumerate(member_sample) if len(ngrams(s).intersection(sol_chars)) > 0]
-            nm = [s for i,s in enumerate(nonmember_sample) if len(ngrams(s).intersection(sol_chars)) > 0]
+            m = [
+                i
+                for i, s in enumerate(member_sample)
+                if len(ngrams(s).intersection(sol_chars)) > 0
+            ]
+            nm = [
+                s
+                for i, s in enumerate(nonmember_sample)
+                if len(ngrams(s).intersection(sol_chars)) > 0
+            ]
             TPR_tr = 100 * len(m) / len(member_sample)
             FPR_tr = 100 * len(nm) / len(nonmember_sample)
-            TPR = 100 * len([s for s in member_test if len(ngrams(s).intersection(sol_chars)) > 0]) / len(member_test)
-            FPR = 100 * len([s for s in nonmember_test if len(ngrams(s).intersection(sol_chars)) > 0]) / len(nonmember_test)
+            TPR = (
+                100
+                * len(
+                    [
+                        s
+                        for s in member_test
+                        if len(ngrams(s).intersection(sol_chars)) > 0
+                    ]
+                )
+                / len(member_test)
+            )
+            FPR = (
+                100
+                * len(
+                    [
+                        s
+                        for s in nonmember_test
+                        if len(ngrams(s).intersection(sol_chars)) > 0
+                    ]
+                )
+                / len(nonmember_test)
+            )
 
-            print(f"train TPR = {TPR_tr:.2f} @ {FPR_tr:.2f} FPR", f"test TPR = {TPR:.2f} @ {FPR:.2f} FPR")
-            
+            print(
+                f"train TPR = {TPR_tr:.2f} @ {FPR_tr:.2f} FPR",
+                f"test TPR = {TPR:.2f} @ {FPR:.2f} FPR",
+            )
+
             if FPR > TARGET_FPR:
                 RES.append(best_tpr)
                 print("BEST", best_tpr)
@@ -144,15 +188,16 @@ def greedy_selection_basic(member_lines, nonmember_lines, dataset_name, fpr_budg
 
     print(RES)
     if len(RES) == 0:
-        print(f'TPR@{fpr_budget}%FPR over {CROSS_VALS} runs: 0.0')
+        print(f"TPR@{fpr_budget}%FPR over {CROSS_VALS} runs: 0.0")
     else:
-        print(f'TPR@{fpr_budget}%FPR over {CROSS_VALS} runs: {np.mean(RES)}')
+        print(f"TPR@{fpr_budget}%FPR over {CROSS_VALS} runs: {np.mean(RES)}")
 
 
-def greedy_selection_wiki(member_lines, nonmember_lines, dataset_name, fpr_budget, plot_roc):
+def greedy_selection_wiki(
+    member_lines, nonmember_lines, dataset_name, fpr_budget, plot_roc
+):
     random.seed(42)  # For reproducibility
     CROSS_VALS = 10
-    TARGET_FPR = 1
     ALL_AUCS = []
 
     for _ in range(CROSS_VALS):
@@ -188,13 +233,19 @@ def greedy_selection_wiki(member_lines, nonmember_lines, dataset_name, fpr_budge
         CURR_FPR_TEST = 0
         sol_chars = []
 
-        best_tpr = 0
 
         while CURR_FPR < BUDGET:
-            candidates = [c for c in member_char_counts.keys() if len(nonmember_char_counts[c]) <= BUDGET - CURR_FPR]
+            candidates = [
+                c
+                for c in member_char_counts.keys()
+                if len(nonmember_char_counts[c]) <= BUDGET - CURR_FPR
+            ]
             if len(candidates) == 0:
                 break
-            ratios = [(len(member_char_counts[c]) - 5) / (len(nonmember_char_counts[c]) + 5) for c in candidates]
+            ratios = [
+                (len(member_char_counts[c]) - 5) / (len(nonmember_char_counts[c]) + 5)
+                for c in candidates
+            ]
             best_idx = np.argmax(ratios)
             chosen_c = candidates[best_idx]
             sol_chars.append(chosen_c)
@@ -202,8 +253,8 @@ def greedy_selection_wiki(member_lines, nonmember_lines, dataset_name, fpr_budge
             CURR_TPR += len(member_char_counts[chosen_c])
             CURR_FPR += len(nonmember_char_counts[chosen_c])
 
-            #print("TPR", sorted(list(member_char_counts[chosen_c])))
-            #print("FPR", sorted(list(nonmember_char_counts[chosen_c])))
+            # print("TPR", sorted(list(member_char_counts[chosen_c])))
+            # print("FPR", sorted(list(nonmember_char_counts[chosen_c])))
 
             temp = member_char_counts[chosen_c].copy()
             for c in list(member_char_counts.keys()):
@@ -232,15 +283,45 @@ def greedy_selection_wiki(member_lines, nonmember_lines, dataset_name, fpr_budge
                 if len(nonmember_char_counts_test[c]) == 0:
                     del nonmember_char_counts_test[c]
 
-
-            m = [i for i,s in enumerate(member_sample) if len(ngrams(s, n=10).intersection(sol_chars)) > 0]
-            nm = [s for i,s in enumerate(nonmember_sample) if len(ngrams(s, n=10).intersection(sol_chars)) > 0]
+            m = [
+                i
+                for i, s in enumerate(member_sample)
+                if len(ngrams(s, n=10).intersection(sol_chars)) > 0
+            ]
+            nm = [
+                s
+                for i, s in enumerate(nonmember_sample)
+                if len(ngrams(s, n=10).intersection(sol_chars)) > 0
+            ]
             TPR_tr = 100 * len(m) / len(member_sample)
             FPR_tr = 100 * len(nm) / len(nonmember_sample)
-            TPR = 100 * len([s for s in member_test if len(ngrams(s, n=10).intersection(sol_chars)) > 0]) / len(member_test)
-            FPR = 100 * len([s for s in nonmember_test if len(ngrams(s, n=10).intersection(sol_chars)) > 0]) / len(nonmember_test)
+            TPR = (
+                100
+                * len(
+                    [
+                        s
+                        for s in member_test
+                        if len(ngrams(s, n=10).intersection(sol_chars)) > 0
+                    ]
+                )
+                / len(member_test)
+            )
+            FPR = (
+                100
+                * len(
+                    [
+                        s
+                        for s in nonmember_test
+                        if len(ngrams(s, n=10).intersection(sol_chars)) > 0
+                    ]
+                )
+                / len(nonmember_test)
+            )
 
-            print(f"train TPR = {TPR_tr:.2f} @ {FPR_tr:.2f} FPR", f"test TPR = {TPR:.2f} @ {FPR:.2f} FPR")
+            print(
+                f"train TPR = {TPR_tr:.2f} @ {FPR_tr:.2f} FPR",
+                f"test TPR = {TPR:.2f} @ {FPR:.2f} FPR",
+            )
             FPRS.append(FPR)
             TPRS.append(TPR)
 
@@ -265,25 +346,79 @@ def greedy_selection_wiki(member_lines, nonmember_lines, dataset_name, fpr_budge
         ALL_AUCS.append(MAX_AUC)
 
     print(np.mean(ALL_AUCS))
-        
+
+
 def test(w, members_test, nonmembers_test):
-	a = 100 * len([m for m in nonmembers_test if sum([wi in m for wi in w]) > 0]) / len(nonmembers_test)
-	b = 100 * len([m for m in members_test if sum([wi in m for wi in w]) > 0]) / len(members_test)
-	return a,b
+    a = (
+        100
+        * len([m for m in nonmembers_test if sum([wi in m for wi in w]) > 0])
+        / len(nonmembers_test)
+    )
+    b = (
+        100
+        * len([m for m in members_test if sum([wi in m for wi in w]) > 0])
+        / len(members_test)
+    )
+    return a, b
+
 
 def greedy_selection_arxiv(members, nonmembers, dataset_name, fpr_budget, plot_roc):
     N = 2000
-    members = [''.join(e for e in m if e.isalnum() or e.isspace()) for m in members]
-    nonmembers = [''.join(e for e in m if e.isalnum() or e.isspace()) for m in nonmembers]
+    members = ["".join(e for e in m if e.isalnum() or e.isspace()) for m in members]
+    nonmembers = [
+        "".join(e for e in m if e.isalnum() or e.isspace()) for m in nonmembers
+    ]
     members_test = members[:N]
     nonmembers_test = nonmembers[:N]
     members = members[N:]
     nonmembers = nonmembers[N:]
 
-    best_words_ref = ["non-normality", "SED-fitting", "enactment", "classification-regression", "online-to-batch", "far-off", "single-turn",  "GWAS", "lemmatized", "Relic", "articulatory",  "Serra", "Ashtekar", "state-actions", "FDD", "UVW", "Nf3", "substation", "second-price", "unfoldings", "per-node", "Supervisory", "pushback", "MMoE"]
+    best_words_ref = [
+        "non-normality",
+        "SED-fitting",
+        "enactment",
+        "classification-regression",
+        "online-to-batch",
+        "far-off",
+        "single-turn",
+        "GWAS",
+        "lemmatized",
+        "Relic",
+        "articulatory",
+        "Serra",
+        "Ashtekar",
+        "state-actions",
+        "FDD",
+        "UVW",
+        "Nf3",
+        "substation",
+        "second-price",
+        "unfoldings",
+        "per-node",
+        "Supervisory",
+        "pushback",
+        "MMoE",
+    ]
     print(test(best_words_ref, members_test, nonmembers_test))
 
-    best_words = ["pre-registered", "speaker-dependent", "MMoE", "pushback", "Supervisory", "per-node", "fAB", "unfoldings", "second-price", "substation", "Nf3", "UVW", "FDD", "state-actions", "Ashtekar", "Serra"]
+    best_words = [
+        "pre-registered",
+        "speaker-dependent",
+        "MMoE",
+        "pushback",
+        "Supervisory",
+        "per-node",
+        "fAB",
+        "unfoldings",
+        "second-price",
+        "substation",
+        "Nf3",
+        "UVW",
+        "FDD",
+        "state-actions",
+        "Ashtekar",
+        "Serra",
+    ]
     print(test(best_words, members_test, nonmembers_test))
 
     m_dict = {}
@@ -294,7 +429,7 @@ def greedy_selection_arxiv(members, nonmembers, dataset_name, fpr_budget, plot_r
                 m_dict[w] += 1
             else:
                 m_dict[w] = 1
-                
+
     nm_dict = {}
     for m in nonmembers:
         words = list(set(m.split(" ")))
@@ -303,7 +438,7 @@ def greedy_selection_arxiv(members, nonmembers, dataset_name, fpr_budget, plot_r
                 nm_dict[w] += 1
             else:
                 nm_dict[w] = 1
-                
+
     mtest_dict = {}
     for m in members_test:
         words = list(set(m.split(" ")))
@@ -312,7 +447,7 @@ def greedy_selection_arxiv(members, nonmembers, dataset_name, fpr_budget, plot_r
                 mtest_dict[w] += 1
             else:
                 mtest_dict[w] = 1
-                
+
     nmtest_dict = {}
     for m in nonmembers_test:
         words = list(set(m.split(" ")))
@@ -324,7 +459,7 @@ def greedy_selection_arxiv(members, nonmembers, dataset_name, fpr_budget, plot_r
 
     words = list(m_dict.keys())
     tprs = [m_dict[w] for w in words]
-    fprs = [1 if w not in nm_dict else nm_dict[w]+1 for w in words]
+    fprs = [1 if w not in nm_dict else nm_dict[w] + 1 for w in words]
     tprs2 = [tprs[i] if tprs[i] > 10 else 0 for i in range(len(words))]
     best = np.argsort(np.asarray(tprs2) / np.asarray(fprs))[::-1][:100]
 
@@ -333,18 +468,23 @@ def greedy_selection_arxiv(members, nonmembers, dataset_name, fpr_budget, plot_r
         w = words[best[i]]
         if sum([e.isspace() for e in w]) == 0:
             best_w.append(w)
-            print(100*fprs[best[i]] / len(nonmembers), 100*tprs[best[i]] / len(members), w, test([w], members_test, nonmembers_test))
+            print(
+                100 * fprs[best[i]] / len(nonmembers),
+                100 * tprs[best[i]] / len(members),
+                w,
+                test([w], members_test, nonmembers_test),
+            )
         else:
             print(f"skipping {w}")
 
-    print("="*80)
-    print("="*80)
-    print("="*80)
-    print("="*80)
+    print("=" * 80)
+    print("=" * 80)
+    print("=" * 80)
+    print("=" * 80)
 
     words = list(nm_dict.keys())
     tnrs = [nm_dict[w] for w in words]
-    fnrs = [1 if w not in m_dict else m_dict[w]+1 for w in words]
+    fnrs = [1 if w not in m_dict else m_dict[w] + 1 for w in words]
     tnrs2 = [tnrs[i] if tnrs[i] > 10 else 0 for i in range(len(words))]
     best = np.argsort(np.asarray(tnrs2) / np.asarray(fnrs))[::-1][:200]
 
@@ -353,6 +493,11 @@ def greedy_selection_arxiv(members, nonmembers, dataset_name, fpr_budget, plot_r
         w = words[best[i]]
         if sum([e.isspace() for e in w]) == 0:
             best_w.append(w)
-            print(100*fnrs[best[i]] / len(members), 100*tnrs[best[i]] / len(nonmembers), w, test([w], members_test, nonmembers_test))
+            print(
+                100 * fnrs[best[i]] / len(members),
+                100 * tnrs[best[i]] / len(nonmembers),
+                w,
+                test([w], members_test, nonmembers_test),
+            )
         else:
             print(f"skipping {w}")

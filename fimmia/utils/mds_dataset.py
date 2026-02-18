@@ -1,6 +1,5 @@
 from streaming.base import MDSWriter, StreamingDataset, Stream
 from torchdata.datapipes.iter import IterableWrapper
-from glob import glob
 from tqdm import tqdm
 from dataclasses import dataclass
 from transformers import HfArgumentParser
@@ -84,7 +83,9 @@ class MDSDataset:
         working_dir = Path(df_path).with_suffix("")
         embeds_dir = working_dir / "embeds"
         modality_embeds_dir = working_dir / f"{self.modality_key}_embeds"
-        loss_dir = working_dir / "loss" / self.model_name / ("leak" if label else "no_leak")
+        loss_dir = (
+            working_dir / "loss" / self.model_name / ("leak" if label else "no_leak")
+        )
         num_parts = len(list(embeds_dir.glob("*.csv")))
         for num_part in tqdm(
             range(num_parts), total=num_parts, desc=f"prc df {df_path}"
