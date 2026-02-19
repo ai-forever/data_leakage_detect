@@ -2,7 +2,7 @@
 
 <p align="center">
   <picture>
-    <img alt="FiMMIA" src="docs/FiMMIA_system_overview.png" style="max-width: 100%;">
+    <img alt="FiMMIA" src="docs/images/FiMMIA_system_overview.png" style="max-width: 100%;">
   </picture>
 </p>
 
@@ -13,10 +13,15 @@
     <a href="https://github.com/ai-forever/data_leakage_detect/releases">
     <img alt="Release" src="https://img.shields.io/badge/release-v1.0.0-blue">
     </a>
+    <a href="https://fimmia.readthedocs.io/">
+    <img alt="Documentation" src="https://readthedocs.org/projects/fimmia/badge/?version=latest">
+    </a>
 
 </p>
 
 This repository contains an implementation of **F**i**MMIA** - a modular **F**ramework for **M**ultimodal **M**embership **I**nference **A**ttacks (FiMMIA)
+
+📚 **Documentation**: Full documentation is available at [https://fimmia.readthedocs.io/](https://fimmia.readthedocs.io/)
 
 ## Installation
 
@@ -247,7 +252,7 @@ The inference pipeline is shown at image below.
 
 <p align="center">
   <picture>
-    <img alt="FiMMIA Inference" src="docs/FiMMIA_Inference.png" style="max-width: 100%;">
+    <img alt="FiMMIA Inference" src="docs/images/FiMMIA_Inference.png" style="max-width: 100%;">
   </picture>
 </p>
 

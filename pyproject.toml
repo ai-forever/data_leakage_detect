@@ -7,7 +7,7 @@ name = "fimmia"
 version = "1.0.0"
 description = "FiMMIA: Framework for Multimodal Membership Inference Attacks"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "Emelyanov Anton"},
@@ -62,6 +62,12 @@ dev = [
     "pytest",
     "black",
     "flake8",
+]
+docs = [
+    "zensical>=0.0.23",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.23.0",
+    "mkdocs-mermaid2-plugin>=1.0.0",
 ]
 
 [project.scripts]

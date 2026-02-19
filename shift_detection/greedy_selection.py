@@ -233,7 +233,6 @@ def greedy_selection_wiki(
         CURR_FPR_TEST = 0
         sol_chars = []
 
-
         while CURR_FPR < BUDGET:
             candidates = [
                 c
