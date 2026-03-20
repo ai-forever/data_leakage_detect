@@ -244,18 +244,21 @@ class NeighborsGenerator:
         else:
             output_dir = None
 
+        text_col = "answer" if self.args.user_answer else "input"
+        if text_col not in data.columns:
+            raise ValueError(
+                f"Dataset must contain a '{text_col}' column; got columns: {list(data.columns)}"
+            )
+
         for row_idx in tqdm(range(len(data)), total=len(data), leave=True):
-            if self.args.user_answer:
-                text = data.iloc[row_idx].answer
-            else:
-                text = data.iloc[row_idx].input
+            row = data.iloc[row_idx]
+            text = row[text_col]
             text = text[-self.args.max_text_len :]
             new_input.append(text)
             text_neighbors = self.get_neighbors_for_sample(text=text)
             neighbors.append(text_neighbors)
 
             if use_modality:
-                row = data.iloc[row_idx]
                 mod_path = row.get(self.args.modality_column)
                 num_n = len(text_neighbors)
                 paths = get_modality_neighbors(
