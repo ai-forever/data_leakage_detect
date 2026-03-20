@@ -208,55 +208,6 @@ python job_launcher.py --script="fimmia.train" --train_dataset_path=...
 fimmia train --train_dataset_path=...
 ```
 
-### Python API
-
-You can also use FiMMIA programmatically:
-
-```python
-from fimmia import (
-    train,
-    ModelArguments,
-    DataTrainingArguments,
-    DefaultTrainingArguments,
-    NeighborsGenerator,
-    NeighborsArgs,
-    get_default_text_embedder,
-    get_default_modality_embedder,
-)
-
-# Generate neighbors
-args = NeighborsArgs(
-    dataset_path="path/to/train.csv",
-    model_path="ai-forever/FRED-T5-1.7B",
-    max_text_len=4000
-)
-ng = NeighborsGenerator(args)
-df = ng.predict(args.dataset_path)
-
-# Get embedding models
-text_embedder = get_default_text_embedder(
-    model_name="intfloat/e5-mistral-7b-instruct",
-    max_seq_length=4096
-)
-modality_embedder = get_default_modality_embedder(device="cuda")
-
-# Train model
-model_args = ModelArguments(
-    model_name="FiMMIAModalityAllModelLossNormSTDV2",
-    embedding_size=4096,
-    modality_embedding_size=1024
-)
-data_args = DataTrainingArguments(
-    train_dataset_path="train/mds/path",
-    val_dataset_path="test/mds/path"
-)
-training_args = DefaultTrainingArguments(
-    output_dir="path/to/model/save",
-    num_train_epochs=10
-)
-trainer = train(model_args, data_args, training_args)
-```
-
 ### Pipeline Overview
 The inference pipeline is shown at image below.
 
