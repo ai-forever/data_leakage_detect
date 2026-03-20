@@ -75,7 +75,9 @@ fimmia infer \
   --model_path="path/to/model/save" \
   --test_path="test/mds/path" \
   --save_path="path/to/save/predictions.csv" \
-  --save_metrics_path="path/to/save/metrics"
+  --save_metrics_path="path/to/save/metrics" \
+  --sigmas_path="path/to/sigmas.json" \
+  --sigmas_type="std"
 ```
 
 **Neighbor generation:**
@@ -84,6 +86,8 @@ fimmia neighbors \
   --model_path="ai-forever/FRED-T5-1.7B" \
   --dataset_path="path/to/train.csv" \
   --max_text_len=4000
+# Optional (multimodal): also write modality_neighbors, e.g.
+#   --modality_column=video
 ```
 
 **Embedding generation:**
@@ -92,32 +96,38 @@ fimmia embeds \
   --df_path="path/to/train.csv" \
   --embed_model="intfloat/e5-mistral-7b-instruct" \
   --max_seq_length=4096 \
-  --modality_key=video \
-  --device="cuda"
+  --user_answer=0 \
+  --device=cuda \
+  --part_size=5000 \
+  --run_single_file=1
+# Optional (multimodal): same run also computes modality embeds, e.g.
+#   --modality_key=video
 ```
 
 **Loss computation:**
 ```bash
-# For image modality
+# For image modality (model load path is --model_name only)
 fimmia loss image \
-  --model_id=Qwen/Qwen2.5-VL-3B-Instruct \
-  --model_name=Qwen2.5-VL-3B-Instruct \
+  --model_name=Qwen/Qwen2.5-VL-3B-Instruct \
   --label=0 \
-  --df_path="path/to/train.csv"
+  --df_path="path/to/train.csv" \
+  --part_size=5000
 
 # For video modality
 fimmia loss video \
   --model_id=Qwen/Qwen2.5-VL-3B-Instruct \
-  --model_name=Qwen/Qwen2.5-VL-3B-Instruct \
+  --model_name=Qwen2.5-VL-3B-Instruct \
   --label=0 \
-  --df_path="path/to/train.csv"
+  --df_path="path/to/train.csv" \
+  --part_size=5000
 
 # For audio modality
 fimmia loss audio \
   --model_id=Qwen/Qwen2-Audio-7B-Instruct \
   --model_name=Qwen2-Audio-7B-Instruct \
   --label=0 \
-  --df_path="path/to/train.csv"
+  --df_path="path/to/train.csv" \
+  --part_size=5000
 ```
 
 **SFT-LoRA finetuning:**
@@ -256,7 +266,7 @@ The inference pipeline is shown at image below.
   </picture>
 </p>
 
-See examples of Finetuning and Inference Fimmia [here](examples/Finetune_and_Inference_example.ipynb)
+See examples of finetuning and inference in the packaged walkthrough: [examples/Finetune_and_Inference_example_package.ipynb](examples/Finetune_and_Inference_example_package.ipynb) (see also [examples/Finetune_and_Inference_example.ipynb](examples/Finetune_and_Inference_example.ipynb)).
 
 ### Data
 For start working we should convert our dataset into pandas format with following structure:
@@ -326,6 +336,7 @@ fimmia neighbors \
   --model_path="ai-forever/FRED-T5-1.7B" \
   --dataset_path="path/to/train.csv" \
   --max_text_len=4000
+# Optional: --modality_column=video (or image/audio) for modality_neighbors
 ```
 
 **Legacy interface (Deprecated):**
@@ -340,6 +351,7 @@ Arguments:
 * `model_path` - embedder model for masking neighbors generation
 * `dataset_path` - path to dataset for generating neighbors
 * `max_text_len` - max of text length in number of characters
+* `modality_column` - optional; `video`, `image`, or `audio` to generate aligned modality perturbations (`modality_neighbors` column)
 #### Embedding generation (text + optional modality)
 Embeddings are produced by a unified pipeline in `fimmia.embeds_joint`, which uses the **embedding_models** abstraction (`fimmia.embedding_models`): a **BaseEmbedder** interface for both text and modality. The default text embedder is SentenceTransformer (e.g. E5); the default modality embedder is ImageBind. When `--modality_key` is set, both the text and modality models are loaded **before** dataset processing starts.
 
@@ -387,10 +399,9 @@ Arguments:
 
 **Structured CLI (Recommended):**
 ```bash
-# Image
+# Image (--model_name is the Hugging Face or local path to the vision-language model)
 fimmia loss image \
-  --model_id=Qwen/Qwen2.5-VL-3B-Instruct \
-  --model_name=Qwen2.5-VL-3B-Instruct \
+  --model_name=Qwen/Qwen2.5-VL-3B-Instruct \
   --label=0 \
   --df_path="path/to/train.csv" \
   --part_size=5000
@@ -414,14 +425,13 @@ fimmia loss video \
 
 **Legacy interface (Deprecated):**
 ```bash
-python job_launcher.py --script="fimmia.image.loss_calc" --model_id=... --model_name=... --label=0 --df_path=...
+python job_launcher.py --script="fimmia.image.loss_calc" --model_name=... --label=0 --df_path=...
 python job_launcher.py --script="fimmia.audio.loss_calc_qwen2" --model_id=... --model_name=... --label=0 --df_path=...
 python job_launcher.py --script="fimmia.video.loss_calc_qwen25" --model_id=... --model_name=... --label=0 --df_path=...
 ```
 
 Arguments:
-* `model_id` - path to MLLM model
-* `model_name` - name of MLLM model (used for storing results)
+* `model_id` / `model_name` - video and audio loss scripts require both (`model_id` loads weights; `model_name` names output folders). Image loss uses **`model_name` only** (same argument holds the model path for `from_pretrained`).
 * `label` - label of dataset `0` or `1`
 * `df_path` - path to dataset for calculating loss
 * `part_size` - lines for splitting dataframe into smaller frames
@@ -499,7 +509,7 @@ python job_launcher.py --script="fimmia.train" \
 ```
 Training arguments:
 * `train_dataset_path` - path to train mds dataset
-* `val_dataset_path` - path to test mds dataset
+* `val_dataset_path` - path to validation MDS data; optional. If omitted, training still completes and the model is saved, but `test.csv` / `test_metrics.csv` are not written under `output_dir`.
 * `model_name` - FiMMIA architecture: use `FiMMIABaseLineModelLossNormSTDV2` for text-only (no modality); use `FiMMIAModalityAllModelLossNormSTDV2` when the MDS dataset includes modality embeddings
 * `embedding_size` - text embedding dimension (default: 4096)
 * `modality_embedding_size` - modality embedding dimension for ModalityAll models (default: 1024)
@@ -527,7 +537,9 @@ fimmia infer \
   --model_path="path/to/model/save" \
   --test_path="test/mds/path" \
   --save_path="path/to/save/predictions.csv" \
-  --save_metrics_path="path/to/save/metrics"
+  --save_metrics_path="path/to/save/metrics" \
+  --sigmas_path="path/to/sigmas.json" \
+  --sigmas_type="std"
 ```
 
 **Legacy interface (Deprecated):**
@@ -537,7 +549,9 @@ python job_launcher.py --script="fimmia.fimmia_inference" \
   --model_path="path/to/model/save" \
   --test_path="test/mds/path" \
   --save_path="path/to/save/predictions.csv" \
-  --save_metrics_path="path/to/save/metrics"
+  --save_metrics_path="path/to/save/metrics" \
+  --sigmas_path="path/to/sigmas.json" \
+  --sigmas_type="std"
 ```
 
 Arguments:
@@ -546,6 +560,7 @@ Arguments:
 * `test_path` - path to test dataset
 * `save_path` - path to save predictions
 * `save_metrics_path` - path to save metrics
+* `sigmas_path` / `sigmas_type` - passed to the data collator for normalization (same as training; use the JSON produced alongside your MDS pipeline)
 
 ### Gradient attribution
 

@@ -12,22 +12,11 @@ import importlib
 
 def _import_and_run(module_path, args):
     """Import a module and run its main() function with remaining args."""
-    try:
-        module = importlib.import_module(module_path)
-        # Save original sys.argv and restore it after
-        original_argv = sys.argv[:]
-        # Set sys.argv to what the module expects (script name + remaining args)
-        sys.argv = [module_path] + args
-        try:
-            module.main()
-        finally:
-            sys.argv = original_argv
-    except ImportError as e:
-        print(f"Error importing module {module_path}: {e}", file=sys.stderr)
-        sys.exit(1)
-    except AttributeError:
-        print(f"Module {module_path} does not have a main() function", file=sys.stderr)
-        sys.exit(1)
+    module = importlib.import_module(module_path)
+    original_argv = sys.argv[:]
+    sys.argv = [module_path] + args
+    module.main()
+    sys.argv = original_argv
 
 
 def main():

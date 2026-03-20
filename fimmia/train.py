@@ -79,10 +79,11 @@ def train(
         save_metrics_path = Path(training_args.output_dir) / "test_metrics.csv"
         # save model
         trainer.save_model()
-        df_pred = get_df_with_predictions(val_ds, trainer)
-        df_pred.to_csv(str(save_path), index=False)
-        m = get_metrics_from_df(df_pred)
-        m.to_csv(str(save_metrics_path), index=False)
+        if val_ds is not None:
+            df_pred = get_df_with_predictions(val_ds, trainer)
+            df_pred.to_csv(str(save_path), index=False)
+            m = get_metrics_from_df(df_pred)
+            m.to_csv(str(save_metrics_path), index=False)
     except KeyboardInterrupt:
         print("Stop training...")
     return trainer
