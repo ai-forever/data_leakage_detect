@@ -32,7 +32,7 @@ class ImageBindEmbedder(BaseEmbedder):
         except ImportError as e:
             raise RuntimeError(
                 "ImageBind is not installed. Please install it, e.g. "
-                "pip install 'git+https://github.com/facebookresearch/ImageBind.git'"
+                "uv pip install 'git+https://github.com/facebookresearch/ImageBind.git'"
             ) from e
 
         self._ib_data = ib_data

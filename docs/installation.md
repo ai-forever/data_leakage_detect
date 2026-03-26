@@ -17,7 +17,7 @@ For development and contributions, install in editable mode:
 ```bash
 git clone https://github.com/ai-forever/data_leakage_detect.git
 cd data_leakage_detect
-pip install -e .
+uv pip install -e .
 ```
 
 This will:
@@ -30,7 +30,7 @@ This will:
 For regular usage:
 
 ```bash
-pip install git+https://github.com/ai-forever/data_leakage_detect.git
+uv pip install git+https://github.com/ai-forever/data_leakage_detect.git
 ```
 
 ## Dependencies
@@ -82,7 +82,7 @@ print(torch.cuda.get_device_name(0))
 If ImageBind fails to install, try:
 
 ```bash
-pip install git+https://github.com/facebookresearch/ImageBind.git
+uv pip install git+https://github.com/facebookresearch/ImageBind.git
 ```
 
 ### CUDA/GPU Issues
@@ -98,15 +98,15 @@ If you encounter CUDA-related errors:
 If you get import errors after installation:
 
 1. Ensure you're using the correct Python environment
-2. Verify installation: `pip list | grep fimmia`
-3. Reinstall in editable mode: `pip install -e .`
+2. Verify installation: `uv pip list | grep fimmia`
+3. Reinstall in editable mode: `uv pip install -e .`
 
 ## Documentation
 
 The documentation is built using **Zensical** (a backward-compatible alternative to MkDocs). To build locally:
 
 ```bash
-pip install -r docs/requirements.txt
+uv pip install -r docs/requirements.txt
 zensical build
 zensical serve  # To preview locally
 ```

@@ -5,15 +5,12 @@ build:
   tools:
     python: "3.11"
   commands:
-    - pip install -r docs/requirements.txt
-    - pip install -e .
+    - pip install uv
+    - uv pip install -r docs/requirements.txt
+    - uv pip install -e .
     - zensical build
 
-python:
-  install:
-    - requirements: docs/requirements.txt
-    - method: pip
-      path: .
+# Dependencies installed in build.commands above (uv); no separate python.install needed.
 
 formats:
   - htmlzip

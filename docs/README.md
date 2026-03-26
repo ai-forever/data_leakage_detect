@@ -8,7 +8,7 @@ This directory contains the source files for the FiMMIA documentation.
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 
 # Build documentation
 zensical build
@@ -25,7 +25,7 @@ If Zensical is not yet available, you can temporarily use MkDocs 1.x:
 
 ```bash
 # Install MkDocs 1.x
-pip install "mkdocs<2.0" mkdocs-material mkdocstrings[python]
+uv pip install "mkdocs<2.0" mkdocs-material mkdocstrings[python]
 
 # Build documentation
 mkdocs build

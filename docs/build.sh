@@ -4,7 +4,7 @@
 set -e
 
 echo "Installing documentation dependencies..."
-pip install -r docs/requirements.txt
+uv pip install -r docs/requirements.txt
 
 echo "Building documentation..."
 zensical build

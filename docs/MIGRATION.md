@@ -27,7 +27,7 @@ As of 2026, MkDocs 2.0 introduced breaking changes that are incompatible with Ma
 
 ```bash
 # Install dependencies
-pip install -r docs/requirements.txt
+uv pip install -r docs/requirements.txt
 
 # Build documentation
 zensical build

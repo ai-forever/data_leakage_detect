@@ -1,10 +1,44 @@
 from datasets import load_dataset, concatenate_datasets
 from sklearn import metrics
+from sklearn.model_selection import StratifiedKFold, train_test_split
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import glob
 from PIL import Image
+
+
+def stratified_cv_split_indices(y, n_splits=5, random_state=42):
+    """
+    Stratified CV folds that respect sklearn limits (n_splits <= smallest class count).
+    If that would be < 2, use a single random stratified train/test split when possible,
+    else one unstratified split.
+    """
+    y_arr = np.asarray(y).ravel()
+    n = len(y_arr)
+    _, counts = np.unique(y_arr, return_counts=True)
+    m = int(counts.min())
+    if m < 2:
+        raise ValueError("Labels must contain at least two samples in each class for shift evaluation.")
+    k = min(n_splits, m)
+    if k >= 2:
+        skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
+        return list(skf.split(np.arange(n), y_arr))
+    idx = np.arange(n)
+    try:
+        train_idx, test_idx = train_test_split(
+            idx,
+            test_size=max(1, min(n // 2, n - 1)),
+            stratify=y_arr,
+            random_state=random_state,
+        )
+    except ValueError:
+        train_idx, test_idx = train_test_split(
+            idx,
+            test_size=max(1, min(n // 2, n - 1)),
+            random_state=random_state,
+        )
+    return [(train_idx, test_idx)]
 
 
 def get_dataset(args, dataset_name, attack_name):
@@ -168,10 +202,6 @@ def get_dataset(args, dataset_name, attack_name):
             raise ValueError(
                 "Custom dataset path must be provided with --custom_data_path"
             )
-        if not args.custom_feature_column:
-            raise ValueError(
-                "Feature column name must be provided with --custom_feature_column"
-            )
         if not args.custom_label_column:
             raise ValueError(
                 "Label column name must be provided with --custom_label_column"
@@ -180,22 +210,51 @@ def get_dataset(args, dataset_name, attack_name):
         # Load the custom dataset
         dataset = pd.read_csv(args.custom_data_path)
 
-        # Extract features and labels
-        X = list(dataset[args.custom_feature_column])
-        X = (
-            [Image.open(image).convert("RGB") for image in X]
-            if args.attack == "bag_of_visual_words"
-            else None
-        )
-        y = list(dataset[args.custom_label_column])
+        if attack_name == "joint_text_modality":
+            if not getattr(args, "custom_text_column", None):
+                raise ValueError(
+                    "joint_text_modality requires --custom_text_column (text per row)"
+                )
+            if not args.custom_feature_column:
+                raise ValueError(
+                    "joint_text_modality uses --custom_feature_column for modality paths"
+                )
+            mod_type = getattr(args, "custom_modality_type", None)
+            if mod_type not in ("image", "audio"):
+                raise ValueError(
+                    "joint_text_modality requires --custom_modality_type image|audio"
+                )
+            X = {
+                "texts": list(dataset[args.custom_text_column].astype(str)),
+                "modality_paths": list(dataset[args.custom_feature_column].astype(str)),
+                "modality_type": mod_type,
+            }
+            y = list(dataset[args.custom_label_column])
+            members = []
+            nonmembers = []
+        else:
+            if not args.custom_feature_column:
+                raise ValueError(
+                    "Feature column name must be provided with --custom_feature_column"
+                )
 
-        # Split into members and non-members based on labels
-        members = list(
-            dataset[dataset[args.custom_label_column] == 1][args.custom_feature_column]
-        )
-        nonmembers = list(
-            dataset[dataset[args.custom_label_column] == 0][args.custom_feature_column]
-        )
+            # Extract features and labels
+            X = list(dataset[args.custom_feature_column].astype(str))
+            if args.attack == "bag_of_visual_words":
+                X = [Image.open(image).convert("RGB") for image in X]
+            y = list(dataset[args.custom_label_column])
+
+            # Split into members and non-members based on labels
+            members = list(
+                dataset[dataset[args.custom_label_column] == 1][
+                    args.custom_feature_column
+                ]
+            )
+            nonmembers = list(
+                dataset[dataset[args.custom_label_column] == 0][
+                    args.custom_feature_column
+                ]
+            )
 
     return X, y, members, nonmembers
 

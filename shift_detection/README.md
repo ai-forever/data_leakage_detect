@@ -5,9 +5,11 @@
 An extension of work by [Das et al., 2024](https://arxiv.org/abs/2406.16201) to multimodal data. We provide blind baselines for text, image and audio datasets and encourage researchers to use them in their MIA evaluations and benchmark creation.
 
 ## How to run our attacks?
-At the root of the repository, run the following to install required dependencies:
+From the `shift_detection/` directory (or pass `shift_detection/requirements.txt` from the repo root), install dependencies with [uv](https://github.com/astral-sh/uv):
 
-```pip install -r requirements.txt```
+```bash
+uv pip install -r requirements.txt
+```
 
 ### Setting up Datasets
 
@@ -32,6 +34,7 @@ and ```<attack>``` is one of the following attacks:
 3. ``greedy_selection``: Applicable for all datasets but works more efficiently on datasets with shorter text samples. Gives best results on datasets: ``temporal_wiki, arxiv1m_1m, multi_web, laion_mi``
 4. ``bag_of_visual_words``: Applicable to image datasets. Infers distribution shift from image statistics, such as SIFT, DCT, color and local binary patters.
 5. ``bag_of_audio_words``: Applicable to audio datasets. Infers distribution shift from audio sample statistics, e.g. spectral features.
+6. ``joint_text_modality``: **Joint baseline** combining bag-of-words text statistics with modality statistics (image or audio) by concatenating extracted features and training the same lightweight classifier. Useful for detecting shifts that are only visible when considering both text + modality together.
 
 ### Example:
 For example, to run the bag-of-words attack on the WikiMIA dataset, run the following command:
@@ -54,6 +57,37 @@ Example:
 ``` python3 run_attack.py --dataset custom --custom_data_path /path/to/your/dataset.csv --custom_feature_column text --custom_label_column label --attack bag_of_words ```
 
 Note: Your custom dataset must be in CSV format with at least two columns: one for features (text) and one for binary labels (1 for members, 0 for non-members).
+
+#### Joint baseline on custom datasets (text + image / text + audio)
+
+To run the joint baseline, your custom CSV must have:
+- **`label`**: 1 for members, 0 for non-members
+- **`text`**: text per row (question/prompt/etc.)
+- **modality path column**: local file paths to images or audio
+
+##### Text + Image
+
+```bash
+python3 run_attack.py --dataset custom \
+  --custom_data_path /path/to/shift_dataset.csv \
+  --custom_feature_column image_path \
+  --custom_text_column text \
+  --custom_label_column label \
+  --custom_modality_type image \
+  --attack joint_text_modality
+```
+
+##### Text + Audio
+
+```bash
+python3 run_attack.py --dataset custom \
+  --custom_data_path /path/to/shift_dataset.csv \
+  --custom_feature_column audio_path \
+  --custom_text_column text \
+  --custom_label_column label \
+  --custom_modality_type audio \
+  --attack joint_text_modality
+```
 
 
 ## Results

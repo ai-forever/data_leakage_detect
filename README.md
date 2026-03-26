@@ -25,10 +25,10 @@ This repository contains an implementation of **F**i**MMIA** - a modular **F**ra
 
 ## Installation
 
-Install the package in development mode:
+Install the package in development mode (use [uv](https://github.com/astral-sh/uv) instead of plain `pip`):
 
 ```bash
-pip install -e .
+uv pip install -e .
 ```
 
 This will install the `fimmia` and `shift_detection` packages along with all dependencies, and make the CLI commands (`fimmia` and `shift-attack`) available in your PATH.

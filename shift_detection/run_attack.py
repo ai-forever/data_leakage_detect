@@ -9,6 +9,7 @@ from shift_detection.greedy_selection import (
 )
 from shift_detection.bag_of_visual_feats import bag_of_visual_words_basic
 from shift_detection.bag_of_audio_feats import bag_of_audio_words_basic
+from shift_detection.joint_text_modality import joint_text_modality_basic
 from shift_detection.utils import get_dataset
 
 
@@ -60,6 +61,15 @@ if __name__ == "__main__":
         "--custom_label_column", help="column name for labels in custom dataset"
     )
     parser.add_argument(
+        "--custom_text_column",
+        help="column name for text (required for joint_text_modality)",
+    )
+    parser.add_argument(
+        "--custom_modality_type",
+        choices=["image", "audio"],
+        help="modality kind for paths in --custom_feature_column (joint_text_modality only)",
+    )
+    parser.add_argument(
         "--attack",
         help="attack method",
         choices=[
@@ -68,6 +78,7 @@ if __name__ == "__main__":
             "greedy_selection",
             "bag_of_visual_words",
             "bag_of_audio_words",
+            "joint_text_modality",
         ],
         default="bag_of_words",
     )
@@ -145,6 +156,15 @@ if __name__ == "__main__":
         )
     elif args.attack == "bag_of_audio_words":
         bag_of_audio_words_basic(
+            X,
+            y,
+            dataset_name=dataset_name,
+            fpr_budget=args.fpr_budget,
+            plot_roc=args.plot_roc,
+            hypersearch=args.hypersearch,
+        )
+    elif args.attack == "joint_text_modality":
+        joint_text_modality_basic(
             X,
             y,
             dataset_name=dataset_name,

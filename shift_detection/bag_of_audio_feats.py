@@ -1,19 +1,16 @@
 import operator
 import numpy as np
 import librosa
-from sklearn.decomposition import PCA
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import (
     GradientBoostingClassifier,
     RandomForestClassifier,
     StackingClassifier,
 )
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold
 from sklearn.naive_bayes import GaussianNB
 from statistics import mean, pstdev
-from shift_detection.utils import get_roc_auc, get_tpr_metric
+from shift_detection.dimensionality import reduce_dimensionality
+from shift_detection.utils import get_roc_auc, get_tpr_metric, stratified_cv_split_indices
 
 
 def extract_audio_features(
@@ -62,34 +59,26 @@ def extract_audio_features(
     return features
 
 
-def reduce_dimensionality(features, n_components=100):
-    """Apply PCA to reduce feature dimensions while preserving 95% variance."""
-
-    n_components = min(n_components, features.shape[1])
-
-    pca = PCA(n_components=n_components, whiten=True, random_state=42)
-    scaler = StandardScaler()
-    pipeline = Pipeline([("scaler", scaler), ("pca", pca)])
-    reduced_features = pipeline.fit_transform(features)
-
-    return reduced_features, pipeline
-
-
 def evaluate_audio_classifier(
     audio_paths, y, params, fpr_budget, n_splits=5, reduce_dim=True
 ):
     """Train/evaluate a classifier on combined image features with CV."""
 
-    X = np.array([extract_audio_features(path) for path in audio_paths])
+    X = np.array(
+        [
+            extract_audio_features(path, n_mfcc=params.get("n_mfcc", 20))
+            for path in audio_paths
+        ]
+    )
 
     if reduce_dim:
         X, _ = reduce_dimensionality(X, n_components=params.get("n_components", 100))
 
     model = get_model(params["model_type"])
-    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+    splits = stratified_cv_split_indices(y, n_splits=n_splits, random_state=42)
 
     roc_auc_scores, tpr_at_low_fpr_scores = [], []
-    for train_idx, test_idx in skf.split(X, y):
+    for train_idx, test_idx in splits:
         X_train, X_test = (
             operator.itemgetter(*train_idx)(X),
             operator.itemgetter(*test_idx)(X),
@@ -144,7 +133,7 @@ def hyperparam_search(audio_paths, y, param_grid, fpr_budget, n_splits=5):
     best_auc = -1
     best_params = None
 
-    for n_mfcc in param_grid.get("sift_clusters", [20]):
+    for n_mfcc in param_grid.get("n_mfcc", [20]):
         for model_type in param_grid.get("model_type", ["random"]):
             for n_components in param_grid.get("n_components", [100]):
                 params = {
@@ -152,12 +141,12 @@ def hyperparam_search(audio_paths, y, param_grid, fpr_budget, n_splits=5):
                     "model_type": model_type,
                     "n_components": n_components,
                 }
-            auc, fpr = evaluate_audio_classifier(
-                audio_paths, y, params, fpr_budget=fpr_budget, n_splits=n_splits
-            )
-            if (mean_auc := mean(auc)) > best_auc:
-                best_auc = mean_auc
-                best_params = params
+                auc, fpr = evaluate_audio_classifier(
+                    audio_paths, y, params, fpr_budget=fpr_budget, n_splits=n_splits
+                )
+                if (mean_auc := mean(auc)) > best_auc:
+                    best_auc = mean_auc
+                    best_params = params
     return best_params, best_auc
 
 

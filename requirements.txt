@@ -1,5 +1,5 @@
 # Runtime dependencies — kept in sync with pyproject.toml [project.dependencies].
-# Install: pip install -r requirements.txt
+# Install: uv pip install -r requirements.txt
 
 torchvision==0.22.1
 torchdata==0.9.0
@@ -28,7 +28,7 @@ seaborn
 captum
 soundfile
 librosa
-torchcodec
+ffmpeg-python
 omegaconf
 setuptools==81.0.0
 imagebind @ git+https://github.com/facebookresearch/ImageBind.git

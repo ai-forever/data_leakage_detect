@@ -90,4 +90,6 @@ urllib3==2.5.0
 wheel==0.45.1
 xxhash==3.6.0
 yarl==1.22.0
+torch==2.7.1
+torchcodec
 zope-interface==8.0.1

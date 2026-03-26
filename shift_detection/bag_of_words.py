@@ -6,10 +6,14 @@ from sklearn.ensemble import (
     StackingClassifier,
 )
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.naive_bayes import GaussianNB, MultinomialNB
-from shift_detection.utils import get_roc_auc, get_tpr_metric, plot_tpr_fpr_curve
+from shift_detection.utils import (
+    get_roc_auc,
+    get_tpr_metric,
+    plot_tpr_fpr_curve,
+    stratified_cv_split_indices,
+)
 
 
 def train_classifier(
@@ -76,10 +80,11 @@ def train_classifier(
 
 def evaluate_cross_val(X, y, fpr_budget, params, n_splits=5, random_state=42):
     """Evaluate model using stratified K-fold CV."""
-    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+    y = np.asarray(y)
+    splits = stratified_cv_split_indices(y, n_splits=n_splits, random_state=random_state)
     auc_scores, tpr_scores = [], []
 
-    for train_idx, test_idx in skf.split(X, y):
+    for train_idx, test_idx in splits:
         X_train, X_test = X[train_idx], X[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
         roc_auc, tpr = train_classifier(
@@ -193,8 +198,10 @@ def bag_of_words_basic(
 
     if plot_roc:
         # Plot ROC for the first CV fold
-        skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-        train_idx, test_idx = next(skf.split(X, y))
+        splits = stratified_cv_split_indices(
+            np.asarray(y), n_splits=5, random_state=42
+        )
+        train_idx, test_idx = splits[0]
         train_classifier(
             X[train_idx],
             X[test_idx],

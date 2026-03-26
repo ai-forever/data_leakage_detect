@@ -42,8 +42,8 @@ FiMMIA implements a semantic perturbation-based approach to membership inference
 ## Getting Started
 
 ```bash
-# Install FiMMIA
-pip install -e .
+# Install FiMMIA (use uv instead of plain pip)
+uv pip install -e .
 
 # Run your first attack
 fimmia train --train_dataset_path="path/to/train" --val_dataset_path="path/to/val" --output_dir="output"
